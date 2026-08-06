@@ -15,6 +15,10 @@ use App\Filament\Resources\PatientVisits\RelationManagers\VisitServicesRelationM
 use App\Models\PatientVisit;
 use App\Models\Shift;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -27,6 +31,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use UnitEnum;
 
 final class PatientVisitResource extends Resource
@@ -49,6 +54,7 @@ final class PatientVisitResource extends Resource
     {
         return $schema->components([
             Section::make('معلومات الزيارة الأساسية')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(3)->schema([
                         Select::make('patient_id')
@@ -56,7 +62,33 @@ final class PatientVisitResource extends Resource
                             ->relationship('patient', 'full_name')
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->createOptionForm([
+                                Grid::make(2)->schema([
+                                    TextInput::make('full_name')
+                                        ->label('الاسم الكامل')
+                                        ->required()
+                                        ->maxLength(255),
+                                    TextInput::make('phone')
+                                        ->label('الهاتف')
+                                        ->tel()
+                                        ->maxLength(20),
+                                    TextInput::make('age')
+                                        ->label('العمر')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(150),
+                                    Select::make('gender')
+                                        ->label('الجنس')
+                                        ->options(\App\Enums\Gender::class),
+                                    Textarea::make('address')
+                                        ->label('العنوان')
+                                        ->columnSpanFull(),
+                                    Textarea::make('notes')
+                                        ->label('ملاحظات')
+                                        ->columnSpanFull(),
+                                ]),
+                            ]),
 
                         Select::make('referring_doctor_id')
                             ->label('طبيب الإحالة (خارجي)')
@@ -65,17 +97,14 @@ final class PatientVisitResource extends Resource
                             ->preload(),
 
                         Select::make('shift_id')
-                            ->label('الوردية الحالية')
+                            ->label('الوردية')
                             ->relationship('shift', 'id')
                             ->getOptionLabelFromRecordUsing(fn (Shift $record) => "وردية #{$record->id} ({$record->user?->name}) - {$record->status->value}")
                             ->searchable()
-                            ->preload(),
-
-                        TextInput::make('visit_number')
-                            ->label('رقم الزيارة للمريض')
-                            ->numeric()
-                            ->default(1)
-                            ->required(),
+                            ->preload()
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->hiddenOn('create'),
 
                         DateTimePicker::make('visit_date')
                             ->label('تاريخ وتوقيت الزيارة')
@@ -137,11 +166,33 @@ final class PatientVisitResource extends Resource
                     ->options(VisitStatus::class),
             ])
             ->recordActions([
-                \Filament\Actions\EditAction::make(),
+                Action::make('viewInvoice')
+                    ->label('عرض الفاتورة')
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->color('info')
+                    ->modalHeading(fn (PatientVisit $record): string => "فاتورة الزيارة #{$record->id}")
+                    ->modalWidth('5xl')
+                    ->modalContent(function (PatientVisit $record): View {
+                        $record->load(['patient', 'referringDoctor', 'visitServices.service', 'visitServices.selectedOptions.serviceOption', 'payments']);
+                        $invoiceTotal = (float) $record->visitServices->sum('total');
+                        $totalPaid = (float) $record->payments->sum('amount');
+                        $remainingDue = max(0, $invoiceTotal - $totalPaid);
+
+                        return view('filament.patient-visits.invoice-modal', [
+                            'visit' => $record,
+                            'invoiceTotal' => $invoiceTotal,
+                            'totalPaid' => $totalPaid,
+                            'remainingDue' => $remainingDue,
+                        ]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('إغلاق'),
+
+                EditAction::make(),
             ])
             ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

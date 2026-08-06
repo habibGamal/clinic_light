@@ -20,7 +20,6 @@ return new class() extends Migration
             $table->dateTime('opened_at');
             $table->dateTime('closed_at')->nullable();
             $table->string('status')->default('open');
-            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

@@ -25,7 +25,6 @@ final class Shift extends Model
         'opened_at',
         'closed_at',
         'status',
-        'notes',
     ];
 
     /**
@@ -42,6 +41,14 @@ final class Shift extends Model
     public function patientVisits(): HasMany
     {
         return $this->hasMany(PatientVisit::class);
+    }
+
+    /**
+     * @return HasMany<Expense, $this>
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 
     /**

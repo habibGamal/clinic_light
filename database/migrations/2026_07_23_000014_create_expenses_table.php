@@ -12,10 +12,9 @@ return new class() extends Migration
     {
         Schema::create('expenses', function (Blueprint $table): void {
             $table->id();
-            $table->string('title');
-            $table->string('category')->nullable();
+            $table->foreignId('expense_category_id')->constrained('expense_categories')->cascadeOnDelete();
+            $table->foreignId('shift_id')->nullable()->constrained('shifts')->nullOnDelete();
             $table->decimal('amount', 10, 2);
-            $table->date('expense_date');
             $table->foreignId('created_by')->constrained('users');
             $table->text('notes')->nullable();
             $table->timestamps();

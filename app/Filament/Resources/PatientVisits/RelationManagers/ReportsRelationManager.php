@@ -12,7 +12,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -26,35 +26,37 @@ final class ReportsRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Grid::make(2)->schema([
-                Select::make('visit_service_id')
-                    ->label('خدمة الفحص')
-                    ->options(function (RelationManager $livewire): array {
-                        return VisitService::query()
-                            ->where('visit_id', $livewire->getOwnerRecord()->getKey())
-                            ->with('service')
-                            ->get()
-                            ->pluck('service.name', 'id')
-                            ->toArray();
-                    })
-                    ->required()
-                    ->searchable(),
+            Section::make()
+                ->columnSpanFull()
+                ->schema([
+                    Select::make('visit_service_id')
+                        ->label('خدمة الفحص')
+                        ->options(function (RelationManager $livewire): array {
+                            return VisitService::query()
+                                ->where('visit_id', $livewire->getOwnerRecord()->getKey())
+                                ->with('service')
+                                ->get()
+                                ->pluck('service.name', 'id')
+                                ->toArray();
+                        })
+                        ->required()
+                        ->searchable(),
 
-                Select::make('user_id')
-                    ->label('الطبيب المعالج')
-                    ->relationship('doctor', 'name')
-                    ->default(fn () => auth()->id())
-                    ->required(),
+                    Select::make('user_id')
+                        ->label('الطبيب المعالج')
+                        ->relationship('doctor', 'name')
+                        ->default(fn () => auth()->id())
+                        ->required(),
 
-                TextInput::make('title')
-                    ->label('عنوان التقرير')
-                    ->required()
-                    ->columnSpanFull(),
+                    TextInput::make('title')
+                        ->label('عنوان التقرير')
+                        ->required()
+                        ->columnSpanFull(),
 
-                RichEditor::make('report_text')
-                    ->label('نص التقرير التشخيصي')
-                    ->columnSpanFull(),
-            ]),
+                    RichEditor::make('report_text')
+                        ->label('نص التقرير التشخيصي')
+                        ->columnSpanFull(),
+                ]),
         ]);
     }
 
@@ -79,10 +81,15 @@ final class ReportsRelationManager extends RelationManager
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([
-                CreateAction::make()->label('إضافة تقرير طبي جديد'),
+                CreateAction::make()
+                    ->label('إضافة تقرير طبي جديد')
+                    ->closeModalByClickingAway(false)
+                    ->closeModalByEscaping(false),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->closeModalByClickingAway(false)
+                    ->closeModalByEscaping(false),
                 DeleteAction::make(),
             ]);
     }

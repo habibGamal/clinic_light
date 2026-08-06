@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\DiscountType;
 use App\Enums\VisitServiceStatus;
 use Database\Factories\VisitServiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ final class VisitService extends Model
         'technician_id',
         'quantity',
         'unit_price',
+        'discount_type',
         'discount_value',
         'subtotal',
         'total',
@@ -83,6 +85,7 @@ final class VisitService extends Model
     {
         return [
             'status' => VisitServiceStatus::class,
+            'discount_type' => DiscountType::class,
             'unit_price' => 'decimal:2',
             'discount_value' => 'decimal:2',
             'subtotal' => 'decimal:2',

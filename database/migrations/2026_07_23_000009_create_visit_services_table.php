@@ -17,6 +17,7 @@ return new class() extends Migration
             $table->foreignId('technician_id')->nullable()->constrained('users')->nullOnDelete();
             $table->integer('quantity')->default(1);
             $table->decimal('unit_price', 10, 2)->default(0);
+            $table->string('discount_type')->default('fixed');
             $table->decimal('discount_value', 10, 2)->default(0);
             $table->decimal('subtotal', 10, 2)->default(0);
             $table->decimal('total', 10, 2)->default(0);

@@ -41,8 +41,11 @@ final class ReportResource extends Resource
     {
         return $schema->components([
             Section::make('تفاصيل التقرير')
+                ->columnSpanFull()
                 ->schema([
-                    Grid::make(2)->schema([
+                    Section::make()
+                        ->columnSpanFull()
+                        ->schema([
                         Select::make('visit_service_id')
                             ->label('خدمة الزيارة')
                             ->relationship('visitService', 'id')

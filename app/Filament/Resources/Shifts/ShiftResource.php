@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Shifts;
 
 use App\Enums\ShiftStatus;
-use App\Filament\Resources\Shifts\Pages\CreateShift;
-use App\Filament\Resources\Shifts\Pages\EditShift;
 use App\Filament\Resources\Shifts\Pages\ListShifts;
 use App\Models\Shift;
 use BackedEnum;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -22,6 +19,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 final class ShiftResource extends Resource
@@ -37,6 +35,26 @@ final class ShiftResource extends Resource
     protected static ?string $pluralModelLabel = 'الورديات';
 
     protected static string|UnitEnum|null $navigationGroup = 'العمليات';
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -82,11 +100,6 @@ final class ShiftResource extends Resource
                             ->numeric(),
                     ]),
                 ]),
-            Section::make()
-                ->schema([
-                    Textarea::make('notes')
-                        ->label('ملاحظات'),
-                ]),
         ]);
     }
 
@@ -121,14 +134,6 @@ final class ShiftResource extends Resource
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options(ShiftStatus::class),
-            ])
-            ->recordActions([
-                \Filament\Actions\EditAction::make(),
-            ])
-            ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
@@ -136,8 +141,6 @@ final class ShiftResource extends Resource
     {
         return [
             'index' => ListShifts::route('/'),
-            'create' => CreateShift::route('/create'),
-            'edit' => EditShift::route('/{record}/edit'),
         ];
     }
 }

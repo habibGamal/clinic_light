@@ -15,13 +15,28 @@ final class Expense extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title',
-        'category',
+        'expense_category_id',
+        'shift_id',
         'amount',
-        'expense_date',
         'created_by',
         'notes',
     ];
+
+    /**
+     * @return BelongsTo<ExpenseCategory, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
+    }
+
+    /**
+     * @return BelongsTo<Shift, $this>
+     */
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
+    }
 
     /**
      * @return BelongsTo<User, $this>
@@ -38,7 +53,6 @@ final class Expense extends Model
     {
         return [
             'amount' => 'decimal:2',
-            'expense_date' => 'date',
         ];
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Services;
 
 use App\Enums\SelectionType;
-use App\Filament\Resources\ServiceCategories\ServiceCategoryResource;
 use App\Filament\Resources\Services\Pages\CreateService;
 use App\Filament\Resources\Services\Pages\EditService;
 use App\Filament\Resources\Services\Pages\ListServices;
@@ -29,8 +28,6 @@ use UnitEnum;
 final class ServiceResource extends Resource
 {
     protected static ?string $model = Service::class;
-
-    protected static ?string $parentResource = ServiceCategoryResource::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrench;
 

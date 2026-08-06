@@ -32,46 +32,70 @@ it('can render visit services relation manager', function () {
     ])->assertOk();
 });
 
-it('can create a visit service with option groups without column error', function () {
+it('can create multiple visit services with nested options', function () {
     $visit = PatientVisit::factory()->create();
-    $service = Service::factory()->create(['base_price' => 200]);
 
-    $group = ServiceOptionGroup::factory()->create([
-        'service_id' => $service->id,
+    $service1 = Service::factory()->create(['base_price' => 200]);
+    $group1 = ServiceOptionGroup::factory()->create([
+        'service_id' => $service1->id,
         'selection_type' => SelectionType::Single,
     ]);
-
-    $option = ServiceOption::factory()->create([
-        'option_group_id' => $group->id,
+    $option1 = ServiceOption::factory()->create([
+        'option_group_id' => $group1->id,
         'additional_price' => 50,
     ]);
+
+    $service2 = Service::factory()->create(['base_price' => 300]);
 
     livewire(VisitServicesRelationManager::class, [
         'ownerRecord' => $visit,
         'pageClass' => EditPatientVisit::class,
     ])
         ->callAction(TestAction::make(CreateAction::class)->table(), [
-            'service_id' => $service->id,
-            'quantity' => 1,
-            'unit_price' => 250,
-            'discount_value' => 0,
-            'total' => 250,
-            'status' => 'pending',
-            "selected_options_group_{$group->id}" => $option->id,
+            'services' => [
+                $service1->id => [
+                    'selected' => true,
+                    'quantity' => 1,
+                    'unit_price' => 250,
+                    'discount_value' => 10,
+                    'total' => 240,
+                    'status' => 'pending',
+                    'options' => [
+                        "group_{$group1->id}" => $option1->id,
+                    ],
+                ],
+                $service2->id => [
+                    'selected' => true,
+                    'quantity' => 2,
+                    'unit_price' => 300,
+                    'discount_value' => 0,
+                    'total' => 600,
+                    'status' => 'pending',
+                ],
+            ],
         ])
         ->assertHasNoTableActionErrors();
 
     assertDatabaseHas(VisitService::class, [
         'visit_id' => $visit->id,
-        'service_id' => $service->id,
-        'total' => 250,
+        'service_id' => $service1->id,
+        'unit_price' => 250,
+        'discount_value' => 10,
+        'total' => 240,
     ]);
 
-    $visitService = VisitService::where('visit_id', $visit->id)->first();
+    assertDatabaseHas(VisitService::class, [
+        'visit_id' => $visit->id,
+        'service_id' => $service2->id,
+        'quantity' => 2,
+        'total' => 600,
+    ]);
+
+    $visitService1 = VisitService::where('visit_id', $visit->id)->where('service_id', $service1->id)->first();
 
     assertDatabaseHas(VisitServiceSelectedOption::class, [
-        'visit_service_id' => $visitService->id,
-        'service_option_id' => $option->id,
+        'visit_service_id' => $visitService1->id,
+        'service_option_id' => $option1->id,
         'additional_price' => 50,
     ]);
 });

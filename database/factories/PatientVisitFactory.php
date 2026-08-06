@@ -27,7 +27,6 @@ final class PatientVisitFactory extends Factory
             'patient_id' => Patient::factory(),
             'referring_doctor_id' => fake()->optional(0.5)->passthrough(ReferringDoctor::query()->inRandomOrder()->value('id')),
             'shift_id' => Shift::query()->inRandomOrder()->value('id'),
-            'visit_number' => fake()->numberBetween(1, 5),
             'visit_date' => fake()->dateTimeBetween('-30 days', 'now'),
             'status' => fake()->randomElement(VisitStatus::cases()),
             'notes' => fake()->optional()->sentence(),

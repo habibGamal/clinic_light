@@ -38,7 +38,7 @@ it('can create a patient', function () {
             'gender' => $patientData->gender,
         ])
         ->call('create')
-        ->assertNotified();
+        ->assertHasNoFormErrors();
 
     assertDatabaseHas(Patient::class, [
         'full_name' => $patientData->full_name,
@@ -55,7 +55,7 @@ it('can edit a patient', function () {
             'full_name' => 'مريض معدل',
         ])
         ->call('save')
-        ->assertNotified();
+        ->assertHasNoFormErrors();
 
     assertDatabaseHas(Patient::class, [
         'id' => $patient->id,

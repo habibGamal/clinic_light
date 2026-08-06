@@ -9,7 +9,7 @@ use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Models\Expense;
 use BackedEnum;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -42,35 +42,26 @@ final class ExpenseResource extends Resource
             Section::make('بيانات المصروف')
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('title')
-                            ->label('العنوان')
-                            ->required()
-                            ->maxLength(255),
-                        Select::make('category')
+                        Select::make('expense_category_id')
                             ->label('التصنيف')
-                            ->options([
-                                'إيجار' => 'إيجار',
-                                'كهرباء' => 'كهرباء',
-                                'مرتبات' => 'مرتبات',
-                                'مستلزمات' => 'مستلزمات',
-                                'صيانة' => 'صيانة',
-                                'أخرى' => 'أخرى',
-                            ])
-                            ->searchable(),
+                            ->relationship('category', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Grid::make(1)->schema([
+                                    TextInput::make('name')
+                                        ->label('اسم التصنيف')
+                                        ->required()
+                                        ->maxLength(255),
+                                ]),
+                            ]),
                         TextInput::make('amount')
                             ->label('المبلغ')
                             ->numeric()
                             ->required()
                             ->prefix('EGP'),
-                        DatePicker::make('expense_date')
-                            ->label('تاريخ المصروف')
-                            ->required()
-                            ->default(now()),
-                        Select::make('created_by')
-                            ->label('بواسطة')
-                            ->relationship('creator', 'name')
-                            ->required()
-                            ->preload()
+                        Hidden::make('created_by')
                             ->default(fn () => auth()->id()),
                         Textarea::make('notes')
                             ->label('ملاحظات')
@@ -84,27 +75,28 @@ final class ExpenseResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('title')
-                    ->label('العنوان')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('category')
+                TextColumn::make('category.name')
                     ->label('التصنيف')
                     ->badge()
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('amount')
                     ->label('المبلغ')
                     ->money('EGP')
                     ->sortable(),
-                TextColumn::make('expense_date')
-                    ->label('التاريخ')
-                    ->date()
+                TextColumn::make('shift.id')
+                    ->label('الوردية')
+                    ->placeholder('بدون وردية')
                     ->sortable(),
                 TextColumn::make('creator.name')
                     ->label('بواسطة')
                     ->sortable(),
+                TextColumn::make('created_at')
+                    ->label('تاريخ الإنشاء')
+                    ->dateTime()
+                    ->sortable(),
             ])
-            ->defaultSort('expense_date', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->recordActions([
                 \Filament\Actions\EditAction::make(),
             ])

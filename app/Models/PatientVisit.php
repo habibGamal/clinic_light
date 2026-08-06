@@ -21,7 +21,6 @@ final class PatientVisit extends Model
         'patient_id',
         'referring_doctor_id',
         'shift_id',
-        'visit_number',
         'visit_date',
         'status',
         'notes',

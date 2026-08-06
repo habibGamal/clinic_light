@@ -30,7 +30,6 @@ final class ShiftFactory extends Factory
             'opened_at' => now(),
             'closed_at' => null,
             'status' => ShiftStatus::Open,
-            'notes' => fake()->optional()->sentence(),
         ];
     }
 

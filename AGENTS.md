@@ -1,8 +1,7 @@
 <laravel-boost-guidelines>
 === foundation rules ===
-# Project scope guidelines
-this project is arabic-only
-
+We are in first development stage you are free to edit migration files directly
+ 
 # Laravel Boost Guidelines
 
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.

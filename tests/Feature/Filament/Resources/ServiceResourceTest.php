@@ -16,21 +16,16 @@ beforeEach(function () {
 });
 
 it('can render service list page', function () {
-    $category = ServiceCategory::factory()->create();
-
-    livewire(ListServices::class, [
-        'serviceCategory' => $category->getKey(),
-    ])->assertOk();
+    livewire(ListServices::class)->assertOk();
 });
 
-it('can render service edit page within parent category', function () {
+it('can render service edit page', function () {
     $category = ServiceCategory::factory()->create();
     $service = Service::factory()->create([
         'category_id' => $category->id,
     ]);
 
     livewire(EditService::class, [
-        'serviceCategory' => $category->getKey(),
         'record' => $service->getKey(),
     ])->assertOk();
 });
