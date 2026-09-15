@@ -98,7 +98,8 @@ it('can create a user', function () {
 });
 
 it('can update a user', function () {
-    $user = User::factory()->create();
+    $role = Role::factory()->create();
+    $user = User::factory()->create(['role_id' => $role->id]);
     $newUserData = User::factory()->make();
 
     livewire(EditUser::class, [
@@ -107,9 +108,11 @@ it('can update a user', function () {
         ->fillForm([
             'name' => $newUserData->name,
             'email' => $newUserData->email,
-            'role_id' => $user->role_id,
+            'phone' => '01012345678',
+            'role_id' => $role->id,
         ])
         ->call('save')
+        ->assertHasNoFormErrors()
         ->assertNotified();
 
     assertDatabaseHas(User::class, [

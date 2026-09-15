@@ -23,6 +23,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -32,6 +33,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 final class PatientVisitResource extends Resource
@@ -49,6 +51,12 @@ final class PatientVisitResource extends Resource
     protected static ?string $pluralModelLabel = 'زيارات المرضى';
 
     protected static string|UnitEnum|null $navigationGroup = 'إدارة المرضى';
+
+    public static function canEdit(Model $record): bool
+    {
+        /** @var PatientVisit $record */
+        return $record->status === VisitStatus::Waiting;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -111,12 +119,6 @@ final class PatientVisitResource extends Resource
                             ->default(now())
                             ->required(),
 
-                        Select::make('status')
-                            ->label('حالة الزيارة')
-                            ->options(VisitStatus::class)
-                            ->default(VisitStatus::Waiting)
-                            ->required(),
-
                         Textarea::make('notes')
                             ->label('ملاحظات الزيارة')
                             ->columnSpanFull(),
@@ -173,20 +175,47 @@ final class PatientVisitResource extends Resource
                     ->modalHeading(fn (PatientVisit $record): string => "فاتورة الزيارة #{$record->id}")
                     ->modalWidth('5xl')
                     ->modalContent(function (PatientVisit $record): View {
-                        $record->load(['patient', 'referringDoctor', 'visitServices.service', 'visitServices.selectedOptions.serviceOption', 'payments']);
-                        $invoiceTotal = (float) $record->visitServices->sum('total');
-                        $totalPaid = (float) $record->payments->sum('amount');
-                        $remainingDue = max(0, $invoiceTotal - $totalPaid);
+                        $invoice = app(\App\Services\InvoiceService::class)->syncInvoice($record);
+                        $record->load(['patient', 'referringDoctor', 'invoice.items', 'payments']);
 
                         return view('filament.patient-visits.invoice-modal', [
                             'visit' => $record,
-                            'invoiceTotal' => $invoiceTotal,
-                            'totalPaid' => $totalPaid,
-                            'remainingDue' => $remainingDue,
+                            'invoice' => $invoice,
+                            'invoiceTotal' => (float) $invoice->total_amount,
+                            'totalPaid' => (float) $invoice->paid_amount,
+                            'remainingDue' => (float) $invoice->remaining_amount,
                         ]);
                     })
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('إغلاق'),
+
+                Action::make('complete')
+                    ->label('إكمال الزيارة')
+                    ->icon(Heroicon::OutlinedCheckCircle)
+                    ->color('success')
+                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
+                    ->requiresConfirmation()
+                    ->action(function (PatientVisit $record): void {
+                        $record->update(['status' => VisitStatus::Completed]);
+                        Notification::make()
+                            ->title('تم إكمال الزيارة بنجاح')
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('cancel')
+                    ->label('إلغاء الزيارة')
+                    ->icon(Heroicon::OutlinedXCircle)
+                    ->color('danger')
+                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
+                    ->requiresConfirmation()
+                    ->action(function (PatientVisit $record): void {
+                        $record->update(['status' => VisitStatus::Cancelled]);
+                        Notification::make()
+                            ->title('تم إلغاء الزيارة بنجاح')
+                            ->warning()
+                            ->send();
+                    }),
 
                 EditAction::make(),
             ])

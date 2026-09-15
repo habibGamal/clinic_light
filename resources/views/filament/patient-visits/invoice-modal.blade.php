@@ -1,22 +1,29 @@
+@php
+    $invoice = $invoice ?? app(\App\Services\InvoiceService::class)->syncInvoice($visit);
+@endphp
+
 <div class="space-y-6 text-gray-900 dark:text-gray-100 p-2">
     <!-- Header Info -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 border-gray-200 dark:border-gray-700 gap-4">
         <div>
-            <h2 class="text-xl font-bold text-primary-600 dark:text-primary-400">فاتورة زيارة #{{ $visit->id }}</h2>
+            <h2 class="text-xl font-bold text-primary-600 dark:text-primary-400">
+                {{ $invoice->invoice_number ?? ('فاتورة زيارة #' . $visit->id) }}
+            </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400">تاريخ الزيارة: {{ $visit->visit_date?->format('Y-m-d H:i') }}</p>
         </div>
         <div class="text-left dir-ltr">
+            @php
+                $statusEnum = $invoice->status;
+                $statusLabel = method_exists($statusEnum, 'getLabel') ? $statusEnum->getLabel() : ($statusEnum->value ?? (string) $statusEnum);
+                $color = method_exists($statusEnum, 'getColor') ? $statusEnum->getColor() : 'gray';
+            @endphp
             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-                @if($remainingDue <= 0 && $invoiceTotal > 0) bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300
-                @elseif($totalPaid > 0) bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300
-                @else bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 @endif">
-                @if($remainingDue <= 0 && $invoiceTotal > 0)
-                    مسددة بالكامل
-                @elseif($totalPaid > 0)
-                    مدفوعة جزئياً
-                @else
-                    غير مسددة
-                @endif
+                @if($color === 'success') bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300
+                @elseif($color === 'warning') bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300
+                @elseif($color === 'info') bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300
+                @elseif($color === 'danger') bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300
+                @else bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 @endif">
+                {{ $statusLabel }}
             </span>
         </div>
     </div>
@@ -49,57 +56,51 @@
         </div>
     </div>
 
-    <!-- Services Table -->
+    <!-- Invoice Line Items Table -->
     <div>
-        <h3 class="text-md font-bold mb-3">تفاصيل الخدمات المطلوبة والفحوصات</h3>
+        <h3 class="text-md font-bold mb-3">بنود ومفردات الفاتورة (Invoice Items)</h3>
         <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table class="w-full text-sm text-right">
                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold border-b border-gray-200 dark:border-gray-700">
                     <tr>
                         <th class="p-3">#</th>
-                        <th class="p-3">اسم الخدمة والخيارات</th>
+                        <th class="p-3">الوصف / البند</th>
+                        <th class="p-3 text-center">النوع</th>
                         <th class="p-3 text-center">الكمية</th>
                         <th class="p-3 text-left">سعر الوحدة</th>
                         <th class="p-3 text-left">الخصم</th>
                         <th class="p-3 text-left">الإجمالي</th>
-                        <th class="p-3 text-center">الحالة</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($visit->visitServices as $index => $vs)
-                        @php
-                            $optNames = $vs->selectedOptions->map(fn($o) => $o->serviceOption?->name)->filter()->implode('، ');
-                        @endphp
-                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                    @forelse($invoice->items as $index => $item)
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 @if($item->type === 'refund') bg-rose-50/40 dark:bg-rose-950/20 @endif">
                             <td class="p-3 font-medium">{{ $index + 1 }}</td>
                             <td class="p-3">
-                                <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $vs->service?->name }}</span>
-                                @if(!empty($optNames))
-                                    <span class="block text-xs text-gray-500 dark:text-gray-400 font-normal">({{ $optNames }})</span>
-                                @endif
+                                <span class="font-semibold @if($item->type === 'refund') text-rose-600 dark:text-rose-400 @else text-gray-900 dark:text-gray-100 @endif">
+                                    {{ $item->description }}
+                                </span>
                             </td>
-                            <td class="p-3 text-center">{{ $vs->quantity }}</td>
-                            <td class="p-3 text-left">{{ number_format((float)$vs->unit_price, 2) }} EGP</td>
-                            <td class="p-3 text-left">
-                                @if($vs->discount_type === \App\Enums\DiscountType::Percent)
-                                    {{ $vs->discount_value }}%
-                                @else
-                                    {{ number_format((float)$vs->discount_value, 2) }} EGP
-                                @endif
-                            </td>
-                            <td class="p-3 text-left font-semibold text-primary-600 dark:text-primary-400">{{ number_format((float)$vs->total, 2) }} EGP</td>
                             <td class="p-3 text-center">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                    @if($vs->status === \App\Enums\VisitServiceStatus::Completed) bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300
-                                    @elseif($vs->status === \App\Enums\VisitServiceStatus::Cancelled) bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300
-                                    @else bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 @endif">
-                                    {{ method_exists($vs->status, 'getLabel') ? $vs->status->getLabel() : ($vs->status?->value ?? (string) $vs->status) }}
+                                    @if($item->type === 'service') bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300
+                                    @elseif($item->type === 'option') bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300
+                                    @else bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 @endif">
+                                    @if($item->type === 'service') خدمة أساسية
+                                    @elseif($item->type === 'option') خيار إضافي
+                                    @else استرجاع @endif
                                 </span>
+                            </td>
+                            <td class="p-3 text-center">{{ $item->quantity }}</td>
+                            <td class="p-3 text-left">{{ number_format((float)$item->unit_price, 2) }} EGP</td>
+                            <td class="p-3 text-left">{{ number_format((float)$item->discount_amount, 2) }} EGP</td>
+                            <td class="p-3 text-left font-semibold @if((float)$item->total < 0) text-rose-600 dark:text-rose-400 @else text-primary-600 dark:text-primary-400 @endif">
+                                {{ number_format((float)$item->total, 2) }} EGP
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="p-4 text-center text-gray-500 dark:text-gray-400">لا توجد خدمات مضافة لهذه الزيارة بعد.</td>
+                            <td colspan="7" class="p-4 text-center text-gray-500 dark:text-gray-400">لا توجد بنود مضافة لهذه الفاتورة بعد.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -109,7 +110,7 @@
 
     <!-- Payments Table -->
     <div>
-        <h3 class="text-md font-bold mb-3">سجل الدفعات والمتحصلات</h3>
+        <h3 class="text-md font-bold mb-3">سجل الدفعات والمتحصلات (Payments)</h3>
         <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table class="w-full text-sm text-right">
                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold border-b border-gray-200 dark:border-gray-700">
@@ -142,11 +143,11 @@
     <div class="flex justify-end pt-2">
         <div class="w-full sm:w-80 rounded-lg bg-gray-50 dark:bg-gray-800/60 p-4 border border-gray-200 dark:border-gray-700 space-y-2 text-sm">
             <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>إجمالي خدمات الفاتورة:</span>
+                <span>إجمالي الفاتورة (Total):</span>
                 <span class="font-semibold text-gray-900 dark:text-gray-100">{{ number_format($invoiceTotal, 2) }} EGP</span>
             </div>
             <div class="flex justify-between text-emerald-600 dark:text-emerald-400">
-                <span>إجمالي المبلغ المدفوع:</span>
+                <span>إجمالي المدفوع (Paid):</span>
                 <span class="font-semibold">{{ number_format($totalPaid, 2) }} EGP</span>
             </div>
             <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 text-base font-bold text-rose-600 dark:text-rose-400">

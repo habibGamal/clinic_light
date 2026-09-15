@@ -17,6 +17,8 @@ final class Payment extends Model
 
     protected $fillable = [
         'visit_id',
+        'invoice_id',
+        'type',
         'amount',
         'payment_method',
         'paid_at',
@@ -29,6 +31,14 @@ final class Payment extends Model
     public function visit(): BelongsTo
     {
         return $this->belongsTo(PatientVisit::class, 'visit_id');
+    }
+
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     /**

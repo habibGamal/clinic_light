@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Expenses\Pages;
 use App\Enums\ShiftStatus;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Models\Shift;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateExpense extends CreateRecord
@@ -27,7 +28,17 @@ final class CreateExpense extends CreateRecord
             ->latest('opened_at')
             ->first();
 
-        $data['shift_id'] = $activeShift?->id;
+        if (! $activeShift) {
+            Notification::make()
+                ->title('لا توجد وردية مفتوحة')
+                ->body('لا يمكن إنشاء مصروف بدون وجود وردية مفتوحة. يرجى فتح وردية أولاً.')
+                ->danger()
+                ->send();
+
+            $this->halt();
+        }
+
+        $data['shift_id'] = $activeShift->id;
 
         return $data;
     }

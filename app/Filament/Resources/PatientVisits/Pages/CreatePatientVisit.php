@@ -38,7 +38,7 @@ final class CreatePatientVisit extends CreateRecord
         }
 
         $data['shift_id'] = $activeShift->id;
-        $data['status'] = $data['status'] ?? VisitStatus::Waiting;
+        $data['status'] = VisitStatus::Waiting;
 
         return $data;
     }

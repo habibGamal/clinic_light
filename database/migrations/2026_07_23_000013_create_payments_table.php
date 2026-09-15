@@ -13,6 +13,8 @@ return new class() extends Migration
         Schema::create('payments', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('visit_id')->constrained('patient_visits')->cascadeOnDelete();
+            $table->foreignId('invoice_id')->nullable()->constrained('invoices')->cascadeOnDelete();
+            $table->string('type')->default('payment');
             $table->decimal('amount', 10, 2);
             $table->string('payment_method')->default('cash');
             $table->dateTime('paid_at');

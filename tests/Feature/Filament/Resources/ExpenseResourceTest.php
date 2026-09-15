@@ -12,6 +12,7 @@ use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
+use function Pest\Laravel\assertDatabaseMissing;
 use function Pest\Livewire\livewire;
 
 beforeEach(function () {
@@ -30,6 +31,10 @@ it('can render expense create page', function () {
 });
 
 it('can create an expense with category and sets created_by to logged in user', function () {
+    Shift::factory()->create([
+        'user_id' => $this->user->id,
+        'status' => ShiftStatus::Open,
+    ]);
     $category = ExpenseCategory::factory()->create();
 
     livewire(CreateExpense::class)
@@ -71,7 +76,7 @@ it('assigns open shift to expense if shift is currently open', function () {
     ]);
 });
 
-it('allows expense creation when no shift is open', function () {
+it('prevents expense creation when no shift is open', function () {
     $category = ExpenseCategory::factory()->create();
 
     livewire(CreateExpense::class)
@@ -82,9 +87,8 @@ it('allows expense creation when no shift is open', function () {
         ->call('create')
         ->assertNotified();
 
-    assertDatabaseHas(Expense::class, [
+    assertDatabaseMissing(Expense::class, [
         'expense_category_id' => $category->id,
-        'shift_id' => null,
         'amount' => 300.00,
     ]);
 });

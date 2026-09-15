@@ -13,7 +13,6 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -46,29 +45,29 @@ final class ReportResource extends Resource
                     Section::make()
                         ->columnSpanFull()
                         ->schema([
-                        Select::make('visit_service_id')
-                            ->label('خدمة الزيارة')
-                            ->relationship('visitService', 'id')
-                            ->getOptionLabelFromRecordUsing(fn ($record) => "زيارة #{$record->visit_id} - {$record->service?->name}")
-                            ->required()
-                            ->searchable()
-                            ->preload(),
-                        Select::make('user_id')
-                            ->label('الطبيب المعالج')
-                            ->relationship('doctor', 'name')
-                            ->default(fn () => auth()->id())
-                            ->required()
-                            ->searchable()
-                            ->preload(),
-                        TextInput::make('title')
-                            ->label('عنوان التقرير')
-                            ->required()
-                            ->columnSpanFull()
-                            ->maxLength(255),
-                        RichEditor::make('report_text')
-                            ->label('نص التقرير')
-                            ->columnSpanFull(),
-                    ]),
+                            Select::make('visit_service_id')
+                                ->label('خدمة الزيارة')
+                                ->relationship('visitService', 'id')
+                                ->getOptionLabelFromRecordUsing(fn ($record) => "زيارة #{$record->visit_id} - {$record->service?->name}")
+                                ->required()
+                                ->searchable()
+                                ->preload(),
+                            Select::make('user_id')
+                                ->label('الطبيب المعالج')
+                                ->relationship('doctor', 'name')
+                                ->default(fn () => auth()->id())
+                                ->required()
+                                ->searchable()
+                                ->preload(),
+                            TextInput::make('title')
+                                ->label('عنوان التقرير')
+                                ->required()
+                                ->columnSpanFull()
+                                ->maxLength(255),
+                            RichEditor::make('report_text')
+                                ->label('نص التقرير')
+                                ->columnSpanFull(),
+                        ]),
                 ]),
         ]);
     }

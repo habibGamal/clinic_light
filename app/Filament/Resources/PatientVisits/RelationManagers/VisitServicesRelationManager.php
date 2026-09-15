@@ -13,6 +13,7 @@ use App\Models\ServiceOption;
 use App\Models\ServiceOptionGroup;
 use App\Models\VisitService;
 use App\Models\VisitServiceSelectedOption;
+use App\Services\InvoiceService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -658,6 +659,7 @@ final class VisitServicesRelationManager extends RelationManager
                         }
 
                         if ($createdCount > 0) {
+                            app(InvoiceService::class)->syncInvoice($visit);
                             Notification::make()
                                 ->title('تمت إضافة الخدمات للزيارة بنجاح')
                                 ->success()
@@ -676,13 +678,32 @@ final class VisitServicesRelationManager extends RelationManager
                     ->modalDescription('هل أنت تأكد من تغيير حالة الخدمة إلى مكتمل؟')
                     ->action(function (VisitService $record): void {
                         $record->update(['status' => VisitServiceStatus::Completed]);
+                        app(InvoiceService::class)->syncInvoice($record->visit);
                         Notification::make()
                             ->title('تم إكمال الخدمة بنجاح')
                             ->success()
                             ->send();
                     }),
 
+                Action::make('refundAndCancel')
+                    ->label('استرجاع وإلغاء الخدمة')
+                    ->icon(Heroicon::OutlinedArrowPath)
+                    ->color('warning')
+                    ->visible(fn (VisitService $record): bool => $record->status === VisitServiceStatus::Completed)
+                    ->requiresConfirmation()
+                    ->modalHeading('تأكيد استرجاع وإلغاء الخدمة')
+                    ->modalDescription('هل أنت متاكد من استرجاع وإلغاء هذه الخدمة المكتملة؟ سيتم إضافة مفردات الاسترجاع للفاتورة وإلغاء الخدمة.')
+                    ->action(function (VisitService $record): void {
+                        app(InvoiceService::class)->refundAndCancelService($record);
+                        Notification::make()
+                            ->title('تم استرجاع وإلغاء الخدمة بنجاح')
+                            ->warning()
+                            ->send();
+                    }),
+
                 EditAction::make()
+                    ->hidden(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->disabled(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
                     ->mutateRecordDataUsing(function (array $data, VisitService $record): array {
                         $groups = ServiceOptionGroup::query()->where('service_id', $record->service_id)->get();
                         $selectedOptionIds = $record->selectedOptions->pluck('service_option_id')->toArray();
@@ -714,20 +735,24 @@ final class VisitServicesRelationManager extends RelationManager
                     ->after(function (VisitService $record): void {
                         $record->selectedOptions()->delete();
                         self::saveSelectedOptions($record, $this->tempSelectedOptions);
+                        app(InvoiceService::class)->syncInvoice($record->visit);
                     }),
 
                 DeleteAction::make()
-                    ->hidden(fn (VisitService $record): bool => $record->status === VisitServiceStatus::Completed)
-                    ->disabled(fn (VisitService $record): bool => $record->status === VisitServiceStatus::Completed)
+                    ->hidden(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->disabled(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
                     ->before(function (VisitService $record, DeleteAction $action): void {
-                        if ($record->status === VisitServiceStatus::Completed) {
+                        if (in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true)) {
                             Notification::make()
-                                ->title('لا يمكن حذف الخدمة بعد إكمالها')
+                                ->title('لا يمكن حذف الخدمة بعد إكمالها أو إلغائها')
                                 ->danger()
                                 ->send();
 
                             $action->halt();
                         }
+                    })
+                    ->after(function (VisitService $record): void {
+                        app(InvoiceService::class)->syncInvoice($record->visit);
                     }),
             ]);
     }

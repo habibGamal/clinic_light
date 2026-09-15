@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class PatientVisit extends Model
 {
@@ -25,6 +26,14 @@ final class PatientVisit extends Model
         'status',
         'notes',
     ];
+
+    /**
+     * @return HasOne<Invoice, $this>
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'visit_id');
+    }
 
     /**
      * @return BelongsTo<Patient, $this>
