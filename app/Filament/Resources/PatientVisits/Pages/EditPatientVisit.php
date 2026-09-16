@@ -33,6 +33,16 @@ final class EditPatientVisit extends EditRecord
                 ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
                 ->requiresConfirmation()
                 ->action(function (PatientVisit $record): void {
+                    if ($record->hasDuePayments()) {
+                        Notification::make()
+                            ->title('لا يمكن إكمال الزيارة')
+                            ->body('توجد مبالغ مستحقة على هذه الزيارة بقيمة '.number_format($record->duePaymentAmount(), 2).' EGP. يرجى سداد المبلغ أولاً.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
                     $record->update(['status' => VisitStatus::Completed]);
                     Notification::make()
                         ->title('تم إكمال الزيارة بنجاح')

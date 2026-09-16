@@ -18,12 +18,21 @@ final class Payment extends Model
     protected $fillable = [
         'visit_id',
         'invoice_id',
+        'shift_id',
         'type',
         'amount',
         'payment_method',
         'paid_at',
         'notes',
     ];
+
+    /**
+     * @return BelongsTo<Shift, $this>
+     */
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
+    }
 
     /**
      * @return BelongsTo<PatientVisit, $this>
@@ -39,6 +48,26 @@ final class Payment extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $payment): void {
+            if (! $payment->shift_id) {
+                $activeShift = null;
+                if (auth()->check()) {
+                    $activeShift = Shift::query()
+                        ->where('user_id', auth()->id())
+                        ->where('status', \App\Enums\ShiftStatus::Open)
+                        ->latest('opened_at')
+                        ->first();
+                }
+
+                $payment->shift_id = $activeShift?->id ?? $payment->visit?->shift_id;
+            }
+
+            $payment->paid_at ??= now();
+        });
     }
 
     /**

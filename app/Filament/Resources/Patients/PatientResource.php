@@ -56,6 +56,7 @@ final class PatientResource extends Resource
                         TextInput::make('phone')
                             ->label('الهاتف')
                             ->tel()
+                            ->unique(ignoreRecord: true)
                             ->maxLength(20),
                         TextInput::make('age')
                             ->label('العمر')

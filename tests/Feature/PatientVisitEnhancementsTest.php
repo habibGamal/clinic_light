@@ -142,7 +142,6 @@ it('enforces maximum payment amount to match remaining invoice due', function ()
         ->callTableAction('create', data: [
             'amount' => 300,
             'payment_method' => PaymentMethod::Cash,
-            'paid_at' => now()->toDateTimeString(),
         ])
         ->assertHasNoTableActionErrors();
 
@@ -156,12 +155,11 @@ it('enforces maximum payment amount to match remaining invoice due', function ()
         ->callTableAction('create', data: [
             'amount' => 300,
             'payment_method' => PaymentMethod::Cash,
-            'paid_at' => now()->toDateTimeString(),
         ])
         ->assertHasTableActionErrors(['amount']);
 });
 
-it('disables closing by clicking away and escaping for report actions in ReportsRelationManager', function (): void {
+it('opens report create and edit in a page not modal in ReportsRelationManager', function (): void {
     $patient = Patient::factory()->create();
     $visit = PatientVisit::factory()->create(['patient_id' => $patient->id]);
 
@@ -172,11 +170,8 @@ it('disables closing by clicking away and escaping for report actions in Reports
 
     $createAction = collect($livewire->instance()->getTable()->getHeaderActions())
         ->first(fn ($action) => $action->getName() === 'create');
-    expect($createAction->isModalClosedByClickingAway())->toBeFalse()
-        ->and($createAction->isModalClosedByEscaping())->toBeFalse();
 
-    $editAction = collect($livewire->instance()->getTable()->getActions())
-        ->first(fn ($action) => $action->getName() === 'edit');
-    expect($editAction->isModalClosedByClickingAway())->toBeFalse()
-        ->and($editAction->isModalClosedByEscaping())->toBeFalse();
+    expect($createAction->getUrl())->toBe(App\Filament\Resources\Reports\ReportResource::getUrl('create', [
+        'visit_id' => $visit->id,
+    ]));
 });

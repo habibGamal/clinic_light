@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Filament\Forms\Components\Field;
 use Filament\Infolists\Components\Entry;
 use Filament\Support\Components\Component;
@@ -24,6 +25,9 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->configureTable();
         $this->translatableComponents();
+        LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {
+            $switch->locales(['ar']);
+        });
     }
 
     private function translatableComponents(): void

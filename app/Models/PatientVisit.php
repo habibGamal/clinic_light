@@ -35,6 +35,18 @@ final class PatientVisit extends Model
         return $this->hasOne(Invoice::class, 'visit_id');
     }
 
+    public function hasDuePayments(): bool
+    {
+        return $this->duePaymentAmount() > 0.0;
+    }
+
+    public function duePaymentAmount(): float
+    {
+        $invoice = app(\App\Services\InvoiceService::class)->syncInvoice($this);
+
+        return (float) $invoice->remaining_amount;
+    }
+
     /**
      * @return BelongsTo<Patient, $this>
      */

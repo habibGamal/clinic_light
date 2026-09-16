@@ -12,6 +12,7 @@ use App\Filament\Resources\PatientVisits\RelationManagers\AttachmentsRelationMan
 use App\Filament\Resources\PatientVisits\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\PatientVisits\RelationManagers\ReportsRelationManager;
 use App\Filament\Resources\PatientVisits\RelationManagers\VisitServicesRelationManager;
+use App\Models\Patient;
 use App\Models\PatientVisit;
 use App\Models\Shift;
 use BackedEnum;
@@ -68,8 +69,9 @@ final class PatientVisitResource extends Resource
                         Select::make('patient_id')
                             ->label('المريض')
                             ->relationship('patient', 'full_name')
+                            ->getOptionLabelFromRecordUsing(fn (Patient $record): string => "{$record->full_name}".($record->phone ? " ({$record->phone})" : ''))
                             ->required()
-                            ->searchable()
+                            ->searchable(['full_name', 'phone'])
                             ->preload()
                             ->createOptionForm([
                                 Grid::make(2)->schema([
@@ -80,6 +82,7 @@ final class PatientVisitResource extends Resource
                                     TextInput::make('phone')
                                         ->label('الهاتف')
                                         ->tel()
+                                        ->unique(Patient::class, 'phone')
                                         ->maxLength(20),
                                     TextInput::make('age')
                                         ->label('العمر')
@@ -196,6 +199,16 @@ final class PatientVisitResource extends Resource
                     ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
                     ->requiresConfirmation()
                     ->action(function (PatientVisit $record): void {
+                        if ($record->hasDuePayments()) {
+                            Notification::make()
+                                ->title('لا يمكن إكمال الزيارة')
+                                ->body('توجد مبالغ مستحقة على هذه الزيارة بقيمة '.number_format($record->duePaymentAmount(), 2).' EGP. يرجى سداد المبلغ أولاً.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
                         $record->update(['status' => VisitStatus::Completed]);
                         Notification::make()
                             ->title('تم إكمال الزيارة بنجاح')

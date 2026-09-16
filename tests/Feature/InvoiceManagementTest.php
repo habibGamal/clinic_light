@@ -178,7 +178,6 @@ it('links payments to invoice and updates paid and remaining amounts', function 
         ->callTableAction('create', data: [
             'amount' => 200,
             'payment_method' => PaymentMethod::Cash,
-            'paid_at' => now()->toDateTimeString(),
         ])
         ->assertHasNoTableActionErrors();
 
@@ -216,7 +215,6 @@ it('allows recording a refund operation in payments section for cancelled visit 
         ->callTableAction('create', data: [
             'amount' => 500,
             'payment_method' => PaymentMethod::Cash,
-            'paid_at' => now()->toDateTimeString(),
         ]);
 
     // Service gets cancelled & refunded
@@ -230,7 +228,6 @@ it('allows recording a refund operation in payments section for cancelled visit 
         ->callTableAction('createRefund', data: [
             'amount' => 500,
             'payment_method' => PaymentMethod::Cash,
-            'paid_at' => now()->toDateTimeString(),
             'notes' => 'استرداد كلي للخدمة الملغاة',
         ])
         ->assertHasNoTableActionErrors();

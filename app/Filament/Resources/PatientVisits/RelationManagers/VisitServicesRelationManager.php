@@ -668,6 +668,29 @@ final class VisitServicesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                Action::make('writeReport')
+                    ->label(fn (?VisitService $record): string => ($record && $record->reports()->exists()) ? 'عرض/تعديل التقرير' : 'كتابة تقرير')
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->color('info')
+                    ->url(function (?VisitService $record): ?string {
+                        if (! $record) {
+                            return null;
+                        }
+
+                        $firstReport = $record->reports()->first();
+                        if ($firstReport) {
+                            return \App\Filament\Resources\Reports\ReportResource::getUrl('edit', [
+                                'record' => $firstReport,
+                                'visit_id' => $record->visit_id,
+                            ]);
+                        }
+
+                        return \App\Filament\Resources\Reports\ReportResource::getUrl('create', [
+                            'visit_id' => $record->visit_id,
+                            'visit_service_id' => $record->id,
+                        ]);
+                    }),
+
                 Action::make('complete')
                     ->label('إكمال')
                     ->icon(Heroicon::OutlinedCheckCircle)

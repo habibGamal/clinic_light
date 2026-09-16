@@ -62,3 +62,52 @@ it('can edit a patient', function () {
         'full_name' => 'مريض معدل',
     ]);
 });
+
+it('cannot create a patient with a duplicate phone number', function () {
+    Patient::factory()->create([
+        'phone' => '01011112222',
+    ]);
+
+    livewire(CreatePatient::class)
+        ->fillForm([
+            'full_name' => 'مريض مكرر الهاتف',
+            'phone' => '01011112222',
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['phone' => 'unique']);
+});
+
+it('can edit a patient and keep the same phone number', function () {
+    $patient = Patient::factory()->create([
+        'phone' => '01011112222',
+    ]);
+
+    livewire(EditPatient::class, [
+        'record' => $patient->id,
+    ])
+        ->fillForm([
+            'full_name' => 'اسم معدل',
+            'phone' => '01011112222',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+});
+
+it('cannot edit a patient with a phone number taken by another patient', function () {
+    Patient::factory()->create([
+        'phone' => '01011112222',
+    ]);
+
+    $patient2 = Patient::factory()->create([
+        'phone' => '01033334444',
+    ]);
+
+    livewire(EditPatient::class, [
+        'record' => $patient2->id,
+    ])
+        ->fillForm([
+            'phone' => '01011112222',
+        ])
+        ->call('save')
+        ->assertHasFormErrors(['phone' => 'unique']);
+});

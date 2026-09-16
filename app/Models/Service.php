@@ -49,6 +49,14 @@ final class Service extends Model
     }
 
     /**
+     * @return HasMany<VisitService, $this>
+     */
+    public function visitServices(): HasMany
+    {
+        return $this->hasMany(VisitService::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

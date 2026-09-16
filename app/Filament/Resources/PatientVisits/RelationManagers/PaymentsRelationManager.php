@@ -12,7 +12,6 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -65,11 +64,6 @@ final class PaymentsRelationManager extends RelationManager
                     ->default(PaymentMethod::Cash)
                     ->required(),
 
-                DateTimePicker::make('paid_at')
-                    ->label('تاريخ وتوقيت الدفع')
-                    ->default(now())
-                    ->required(),
-
                 Textarea::make('notes')
                     ->label('ملاحظات')
                     ->columnSpanFull(),
@@ -108,15 +102,15 @@ final class PaymentsRelationManager extends RelationManager
                     ->label('طريقة الدفع')
                     ->badge(),
 
-                TextColumn::make('paid_at')
-                    ->label('تاريخ الدفع')
+                TextColumn::make('created_at')
+                    ->label('تاريخ وتوقيت العملية')
                     ->dateTime()
                     ->sortable(),
 
                 TextColumn::make('notes')
                     ->label('ملاحظات'),
             ])
-            ->defaultSort('paid_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->headerActions([
                 CreateAction::make()
                     ->label('تسجيل دفعة جديد')
@@ -163,11 +157,6 @@ final class PaymentsRelationManager extends RelationManager
                                 ->default(PaymentMethod::Cash)
                                 ->required(),
 
-                            DateTimePicker::make('paid_at')
-                                ->label('تاريخ وتوقيت الاسترداد')
-                                ->default(now())
-                                ->required(),
-
                             Textarea::make('notes')
                                 ->label('ملاحظات الاسترداد')
                                 ->default('استرداد مقابل خدمات ملغاة')
@@ -185,7 +174,6 @@ final class PaymentsRelationManager extends RelationManager
                             'type' => 'refund',
                             'amount' => $amount,
                             'payment_method' => $data['payment_method'],
-                            'paid_at' => $data['paid_at'],
                             'notes' => $data['notes'] ?? null,
                         ]);
 

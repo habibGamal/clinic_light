@@ -87,7 +87,7 @@
                                     @elseif($item->type === 'option') bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300
                                     @else bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 @endif">
                                     @if($item->type === 'service') خدمة أساسية
-                                    @elseif($item->type === 'option') خيار إضافي
+                                    @elseif($item->type === 'option') إضافي
                                     @else استرجاع @endif
                                 </span>
                             </td>
@@ -115,7 +115,7 @@
             <table class="w-full text-sm text-right">
                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold border-b border-gray-200 dark:border-gray-700">
                     <tr>
-                        <th class="p-3">تاريخ الدفع</th>
+                        <th class="p-3">تاريخ وتوقيت العملية</th>
                         <th class="p-3">طريقة الدفع</th>
                         <th class="p-3 text-left">المبلغ المدفوع</th>
                         <th class="p-3">ملاحظات</th>
@@ -124,7 +124,7 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($visit->payments as $payment)
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                            <td class="p-3">{{ $payment->paid_at?->format('Y-m-d H:i') }}</td>
+                            <td class="p-3">{{ ($payment->created_at ?? $payment->paid_at)?->format('Y-m-d H:i') }}</td>
                             <td class="p-3 font-medium">{{ method_exists($payment->payment_method, 'getLabel') ? $payment->payment_method->getLabel() : ($payment->payment_method?->value ?? (string) $payment->payment_method) }}</td>
                             <td class="p-3 text-left font-semibold text-emerald-600 dark:text-emerald-400">{{ number_format((float)$payment->amount, 2) }} EGP</td>
                             <td class="p-3 text-gray-500 dark:text-gray-400">{{ $payment->notes ?? '-' }}</td>
