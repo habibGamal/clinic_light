@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PatientVisits\RelationManagers;
 
 use App\Enums\PaymentMethod;
-use App\Filament\Resources\PatientVisits\Pages\EditPatientVisit;
 use App\Models\Payment;
 use App\Services\InvoiceService;
 use Filament\Actions\Action;
@@ -26,7 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class PaymentsRelationManager extends RelationManager
 {
-    public ?string $pageClass = EditPatientVisit::class;
+    public ?string $pageClass = null;
 
     protected static string $relationship = 'payments';
 
@@ -114,6 +113,7 @@ final class PaymentsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('تسجيل دفعة جديد')
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->mutateFormDataUsing(function (array $data, RelationManager $livewire): array {
                         $invoice = app(InvoiceService::class)->getOrCreateInvoice($livewire->getOwnerRecord());
                         $data['invoice_id'] = $invoice->id;
@@ -127,6 +127,7 @@ final class PaymentsRelationManager extends RelationManager
                     ->label('تسجيل استرداد مبلغ')
                     ->icon(Heroicon::OutlinedArrowPath)
                     ->color('warning')
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->modalHeading('تسجيل استرداد مبلغ للمريض')
                     ->modalWidth('lg')
                     ->form([
@@ -187,8 +188,10 @@ final class PaymentsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->after(fn (RelationManager $livewire) => app(InvoiceService::class)->syncInvoice($livewire->getOwnerRecord())),
                 DeleteAction::make()
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->after(fn (RelationManager $livewire) => app(InvoiceService::class)->syncInvoice($livewire->getOwnerRecord())),
             ]);
     }

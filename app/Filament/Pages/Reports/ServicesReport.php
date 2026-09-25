@@ -4,93 +4,92 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Reports;
 
-use App\Models\Service;
-use App\Models\VisitService;
+use App\Enums\ShiftStatus;
+use App\Filament\Filters\ShiftFilter;
+use App\Filament\Pages\Reports\Widgets\ServicePerformanceChartWidget;
+use App\Filament\Pages\Reports\Widgets\ServicesTableWidget;
+use App\Filament\Pages\Reports\Widgets\ServiceStatsOverviewWidget;
+use App\Models\Shift;
 use BackedEnum;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Pages\Page;
+use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
 use UnitEnum;
 
-final class ServicesReport extends Page implements HasForms, HasTable
+final class ServicesReport extends BaseDashboard
 {
-    use InteractsWithForms;
-    use InteractsWithTable;
+    use HasFiltersForm;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrench;
+    protected static string $routePath = 'reports/services';
 
-    protected static ?string $navigationLabel = 'تقرير أداء الخدمات الطبية';
+    protected static ?string $title = 'تقرير أداء الخدمات الطبية';
 
-    protected static ?string $title = 'تقرير أداء واستهلاك الخدمات الطبية';
+    protected static ?string $navigationLabel = 'تقرير الخدمات';
 
-    protected static string|UnitEnum|null $navigationGroup = 'التقارير والإحصائيات';
+    protected static string|UnitEnum|null $navigationGroup = 'التقارير';
 
     protected static ?int $navigationSort = 3;
 
-    protected string $view = 'filament.pages.reports.services-report';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
-    public function table(Table $table): Table
+    public function persistsFiltersInSession(): bool
     {
-        return $table
-            ->query(
-                Service::query()
-                    ->with('serviceCategory')
-                    ->withCount('visitServices')
-            )
-            ->columns([
-                TextColumn::make('code')
-                    ->label('الكود')
-                    ->searchable()
-                    ->placeholder('-'),
+        return false;
+    }
 
-                TextColumn::make('name')
-                    ->label('اسم الخدمة / الفحص')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
+    public function mount(): void
+    {
+        if (blank($this->filters)) {
+            $activeShift = Shift::query()
+                ->where('status', ShiftStatus::Open)
+                ->when(auth()->check(), fn ($q) => $q->orderByRaw('user_id = ? desc', [auth()->id()]))
+                ->latest('opened_at')
+                ->first();
 
-                TextColumn::make('serviceCategory.name')
-                    ->label('التصنيف')
-                    ->badge()
-                    ->color('gray')
-                    ->sortable(),
+            if ($activeShift) {
+                $this->filters = [
+                    'mode' => 'shifts',
+                    'shift_ids' => [$activeShift->id],
+                ];
+            } else {
+                $this->filters = [
+                    'mode' => 'period',
+                    'preset' => 'today',
+                ];
+            }
+        }
 
-                TextColumn::make('base_price')
-                    ->label('السعر الحالي (ج.م)')
-                    ->money('EGP')
-                    ->sortable(),
+        if (method_exists($this, 'getFiltersForm')) {
+            $this->getFiltersForm()->fill($this->filters);
+        }
+    }
 
-                TextColumn::make('visit_services_count')
-                    ->label('عدد مرات الإجراء')
-                    ->sortable()
-                    ->badge()
-                    ->color('primary'),
+    public function filtersForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                ShiftFilter::makeSection('تصفية الورديات')->columnSpanFull(),
+            ]);
+    }
 
-                TextColumn::make('total_revenue')
-                    ->label('إجمالي الإيرادات المتولدة')
-                    ->state(fn (Service $record): string => number_format((float) VisitService::query()->where('service_id', $record->id)->sum('total'), 2).' ج.م')
-                    ->color('success')
-                    ->weight('bold'),
+    /**
+     * @return int | array<string, ?int>
+     */
+    public function getColumns(): int|array
+    {
+        return 2;
+    }
 
-                IconColumn::make('is_active')
-                    ->label('نشطة')
-                    ->boolean(),
-            ])
-            ->defaultSort('visit_services_count', 'desc')
-            ->filters([
-                SelectFilter::make('category_id')
-                    ->label('تصنيف الخدمة')
-                    ->relationship('serviceCategory', 'name'),
-            ])
-            ->emptyStateHeading('لا توجد خدمات مسجلة')
-            ->emptyStateDescription('عند إضافة خدمات وإجراء فحوصات للمرضى، ستظهر بيانات استهلاك الخدمات هنا.')
-            ->emptyStateIcon(Heroicon::Wrench);
+    /**
+     * @return array<class-string>
+     */
+    public function getWidgets(): array
+    {
+        return [
+            ServiceStatsOverviewWidget::class,
+            ServicePerformanceChartWidget::class,
+            ServicesTableWidget::class,
+        ];
     }
 }

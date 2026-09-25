@@ -18,10 +18,15 @@ final class Patient extends Model
     protected $fillable = [
         'full_name',
         'phone',
-        'age',
+        'birth_date',
         'gender',
         'address',
         'notes',
+    ];
+
+    protected $appends = [
+        'age',
+        'gender_label',
     ];
 
     /**
@@ -32,6 +37,16 @@ final class Patient extends Model
         return $this->hasMany(PatientVisit::class);
     }
 
+    public function getAgeAttribute(): ?int
+    {
+        return $this->birth_date ? (int) $this->birth_date->age : null;
+    }
+
+    public function getGenderLabelAttribute(): ?string
+    {
+        return $this->gender?->getLabel();
+    }
+
     /**
      * @return array<string, string>
      */
@@ -39,6 +54,7 @@ final class Patient extends Model
     {
         return [
             'gender' => Gender::class,
+            'birth_date' => 'date:Y-m-d',
         ];
     }
 }

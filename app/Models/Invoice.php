@@ -25,6 +25,10 @@ final class Invoice extends Model
         'remaining_amount',
     ];
 
+    protected $appends = [
+        'status_label',
+    ];
+
     /**
      * @return BelongsTo<PatientVisit, $this>
      */
@@ -49,6 +53,11 @@ final class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function getStatusLabelAttribute(): ?string
+    {
+        return $this->status?->getLabel();
+    }
+
     /**
      * @return array<string, string>
      */
@@ -56,11 +65,11 @@ final class Invoice extends Model
     {
         return [
             'status' => InvoiceStatus::class,
-            'subtotal' => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'total_amount' => 'decimal:2',
-            'paid_amount' => 'decimal:2',
-            'remaining_amount' => 'decimal:2',
+            'subtotal' => 'float',
+            'discount_total' => 'float',
+            'total_amount' => 'float',
+            'paid_amount' => 'float',
+            'remaining_amount' => 'float',
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Enums\VisitStatus;
 use App\Filament\Resources\PatientVisits\Pages\CreatePatientVisit;
 use App\Filament\Resources\PatientVisits\Pages\EditPatientVisit;
 use App\Filament\Resources\PatientVisits\Pages\ListPatientVisits;
+use App\Filament\Resources\PatientVisits\Pages\ViewPatientVisit;
 use App\Filament\Resources\PatientVisits\RelationManagers\AttachmentsRelationManager;
 use App\Filament\Resources\PatientVisits\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\PatientVisits\RelationManagers\ReportsRelationManager;
@@ -20,6 +21,8 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -56,7 +59,15 @@ final class PatientVisitResource extends Resource
     public static function canEdit(Model $record): bool
     {
         /** @var PatientVisit $record */
-        return $record->status === VisitStatus::Waiting;
+        return $record->status === VisitStatus::Waiting
+            && Shift::query()->where('status', \App\Enums\ShiftStatus::Open)->exists();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        /** @var PatientVisit $record */
+        return $record->status === VisitStatus::Waiting
+            && Shift::query()->where('status', \App\Enums\ShiftStatus::Open)->exists();
     }
 
     public static function form(Schema $schema): Schema
@@ -84,11 +95,9 @@ final class PatientVisitResource extends Resource
                                         ->tel()
                                         ->unique(Patient::class, 'phone')
                                         ->maxLength(20),
-                                    TextInput::make('age')
-                                        ->label('العمر')
-                                        ->numeric()
-                                        ->minValue(0)
-                                        ->maxValue(150),
+                                    DatePicker::make('birth_date')
+                                        ->label('تاريخ الميلاد')
+                                        ->maxDate(now()),
                                     Select::make('gender')
                                         ->label('الجنس')
                                         ->options(\App\Enums\Gender::class),
@@ -196,7 +205,7 @@ final class PatientVisitResource extends Resource
                     ->label('إكمال الزيارة')
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->color('success')
-                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
+                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting && Shift::query()->where('status', \App\Enums\ShiftStatus::Open)->exists())
                     ->requiresConfirmation()
                     ->action(function (PatientVisit $record): void {
                         if ($record->hasDuePayments()) {
@@ -220,16 +229,23 @@ final class PatientVisitResource extends Resource
                     ->label('إلغاء الزيارة')
                     ->icon(Heroicon::OutlinedXCircle)
                     ->color('danger')
-                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
+                    ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting && Shift::query()->where('status', \App\Enums\ShiftStatus::Open)->exists())
                     ->requiresConfirmation()
+                    ->modalHeading('تأكيد إلغاء الزيارة')
+                    ->modalDescription(fn (PatientVisit $record): string => $record->payments()->where('amount', '>', 0)->exists()
+                        ? 'هل أنت متأكد من إلغاء هذه الزيارة؟ سيتم استرداد كافة المدفوعات المسجلة تلقائياً.'
+                        : 'هل أنت متأكد من إلغاء هذه الزيارة؟'
+                    )
                     ->action(function (PatientVisit $record): void {
+                        $hasPayments = $record->payments()->where('amount', '>', 0)->exists();
                         $record->update(['status' => VisitStatus::Cancelled]);
                         Notification::make()
-                            ->title('تم إلغاء الزيارة بنجاح')
+                            ->title($hasPayments ? 'تم إلغاء الزيارة واسترداد المدفوعات بنجاح' : 'تم إلغاء الزيارة بنجاح')
                             ->warning()
                             ->send();
                     }),
 
+                ViewAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -254,6 +270,7 @@ final class PatientVisitResource extends Resource
         return [
             'index' => ListPatientVisits::route('/'),
             'create' => CreatePatientVisit::route('/create'),
+            'view' => ViewPatientVisit::route('/{record}'),
             'edit' => EditPatientVisit::route('/{record}/edit'),
         ];
     }

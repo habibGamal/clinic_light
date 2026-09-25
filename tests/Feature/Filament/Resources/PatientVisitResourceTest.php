@@ -10,7 +10,13 @@ use App\Enums\VisitStatus;
 use App\Filament\Resources\PatientVisits\Pages\CreatePatientVisit;
 use App\Filament\Resources\PatientVisits\Pages\EditPatientVisit;
 use App\Filament\Resources\PatientVisits\Pages\ListPatientVisits;
+use App\Filament\Resources\PatientVisits\Pages\ViewPatientVisit;
 use App\Filament\Resources\PatientVisits\PatientVisitResource;
+use App\Filament\Resources\PatientVisits\RelationManagers\AttachmentsRelationManager;
+use App\Filament\Resources\PatientVisits\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\PatientVisits\RelationManagers\ReportsRelationManager;
+use App\Filament\Resources\PatientVisits\RelationManagers\VisitServicesRelationManager;
+use App\Filament\Resources\Reports\ReportResource;
 use App\Models\Patient;
 use App\Models\PatientVisit;
 use App\Models\Payment;
@@ -19,6 +25,7 @@ use App\Models\Shift;
 use App\Models\User;
 use App\Models\VisitService;
 use Filament\Actions\Testing\TestAction;
+use Filament\Actions\ViewAction;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
@@ -339,4 +346,109 @@ it('rejects duplicate phone when quick creating a patient in visit form', functi
             'phone' => '01011113333',
         ])
         ->assertHasFormComponentActionErrors(['phone' => 'unique']);
+});
+
+it('can render patient visit view page with no header actions and combined relation manager tabs', function () {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create(['patient_id' => $patient->id]);
+
+    $livewire = livewire(ViewPatientVisit::class, [
+        'record' => $visit->id,
+    ])
+        ->assertOk();
+
+    expect($livewire->instance()->hasCombinedRelationManagerTabsWithContent())->toBeTrue()
+        ->and(count($livewire->instance()->getCachedHeaderActions()))->toBe(0);
+});
+
+it('renders ViewAction in list table that links to view page', function () {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create(['patient_id' => $patient->id]);
+
+    livewire(ListPatientVisits::class)
+        ->assertTableActionExists(ViewAction::class);
+});
+
+it('in view mode VisitServicesRelationManager only displays writeReport action and hides mutation actions', function () {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create(['patient_id' => $patient->id]);
+    $service = Service::factory()->create(['base_price' => 100]);
+    $visitService = VisitService::create([
+        'visit_id' => $visit->id,
+        'service_id' => $service->id,
+        'quantity' => 1,
+        'unit_price' => 100,
+        'discount_type' => DiscountType::Fixed,
+        'discount_value' => 0,
+        'subtotal' => 100,
+        'total' => 100,
+        'status' => VisitServiceStatus::Pending,
+    ]);
+
+    $livewire = livewire(VisitServicesRelationManager::class, [
+        'ownerRecord' => $visit,
+        'pageClass' => ViewPatientVisit::class,
+    ])
+        ->assertOk()
+        ->assertTableActionVisible('writeReport', $visitService)
+        ->assertTableActionHidden('create')
+        ->assertTableActionHidden('complete', $visitService)
+        ->assertTableActionHidden('refundAndCancel', $visitService)
+        ->assertTableActionHidden('edit', $visitService)
+        ->assertTableActionHidden('delete', $visitService);
+
+    $writeAction = collect($livewire->instance()->getTable()->getActions())
+        ->first(fn ($action) => $action->getName() === 'writeReport');
+
+    expect($writeAction->record($visitService)->getUrl())->toBe(ReportResource::getUrl('create', [
+        'visit_id' => $visit->id,
+        'visit_service_id' => $visitService->id,
+    ]));
+});
+
+it('in view mode other relation managers hide all action buttons', function () {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create(['patient_id' => $patient->id]);
+    $service = Service::factory()->create();
+    $visitService = VisitService::create([
+        'visit_id' => $visit->id,
+        'service_id' => $service->id,
+        'quantity' => 1,
+        'unit_price' => 100,
+        'discount_type' => DiscountType::Fixed,
+        'discount_value' => 0,
+        'subtotal' => 100,
+        'total' => 100,
+        'status' => VisitServiceStatus::Pending,
+    ]);
+
+    $payment = Payment::create([
+        'visit_id' => $visit->id,
+        'amount' => 50,
+        'payment_method' => PaymentMethod::Cash,
+    ]);
+
+    livewire(PaymentsRelationManager::class, [
+        'ownerRecord' => $visit,
+        'pageClass' => ViewPatientVisit::class,
+    ])
+        ->assertOk()
+        ->assertTableActionHidden('create')
+        ->assertTableActionHidden('createRefund')
+        ->assertTableActionHidden('edit', $payment)
+        ->assertTableActionHidden('delete', $payment);
+
+    livewire(ReportsRelationManager::class, [
+        'ownerRecord' => $visit,
+        'pageClass' => ViewPatientVisit::class,
+    ])
+        ->assertOk()
+        ->assertTableActionHidden('create');
+
+    livewire(AttachmentsRelationManager::class, [
+        'ownerRecord' => $visit,
+        'pageClass' => ViewPatientVisit::class,
+    ])
+        ->assertOk()
+        ->assertTableActionHidden('create');
 });

@@ -21,6 +21,11 @@ final class Report extends Model
         'report_text',
     ];
 
+    protected $appends = [
+        'doctor_name',
+        'service_name',
+    ];
+
     /**
      * @return BelongsTo<VisitService, $this>
      */
@@ -35,5 +40,25 @@ final class Report extends Model
     public function doctor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function getDoctorNameAttribute(): ?string
+    {
+        return $this->doctor?->name;
+    }
+
+    public function getServiceNameAttribute(): ?string
+    {
+        return $this->visitService?->service?->name;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'created_at' => 'datetime:Y-m-d H:i',
+        ];
     }
 }

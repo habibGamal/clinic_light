@@ -23,7 +23,7 @@ final class PatientFactory extends Factory
         return [
             'full_name' => fake()->name(),
             'phone' => fake()->numerify('01#########'),
-            'age' => fake()->numberBetween(5, 80),
+            'birth_date' => fake()->date('Y-m-d', '-1 year'),
             'gender' => fake()->randomElement(Gender::cases()),
             'address' => fake()->optional()->address(),
             'notes' => fake()->optional()->sentence(),

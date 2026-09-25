@@ -26,6 +26,10 @@ final class Payment extends Model
         'notes',
     ];
 
+    protected $appends = [
+        'payment_method_label',
+    ];
+
     /**
      * @return BelongsTo<Shift, $this>
      */
@@ -48,6 +52,11 @@ final class Payment extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        return $this->payment_method->getLabel();
     }
 
     protected static function booted(): void
@@ -77,8 +86,8 @@ final class Payment extends Model
     {
         return [
             'payment_method' => PaymentMethod::class,
-            'amount' => 'decimal:2',
-            'paid_at' => 'datetime',
+            'amount' => 'float',
+            'paid_at' => 'datetime:Y-m-d H:i',
         ];
     }
 }

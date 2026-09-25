@@ -24,6 +24,10 @@ final class Service extends Model
         'is_active',
     ];
 
+    protected $appends = [
+        'category_name',
+    ];
+
     /**
      * @return BelongsTo<ServiceCategory, $this>
      */
@@ -56,13 +60,18 @@ final class Service extends Model
         return $this->hasMany(VisitService::class);
     }
 
+    public function getCategoryNameAttribute(): ?string
+    {
+        return $this->serviceCategory?->name;
+    }
+
     /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'base_price' => 'decimal:2',
+            'base_price' => 'float',
             'cost' => 'decimal:2',
             'is_active' => 'boolean',
         ];

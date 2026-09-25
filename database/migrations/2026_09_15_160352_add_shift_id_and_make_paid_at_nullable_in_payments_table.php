@@ -11,7 +11,7 @@ return new class() extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table): void {
-            $table->foreignId('shift_id')->nullable()->after('invoice_id')->constrained('shifts')->nullOnDelete();
+            $table->foreignId('shift_id')->after('invoice_id')->constrained('shifts')->restrictOnDelete();
             $table->dateTime('paid_at')->nullable()->change();
         });
     }

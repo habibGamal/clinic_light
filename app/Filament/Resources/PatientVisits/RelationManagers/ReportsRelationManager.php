@@ -129,6 +129,7 @@ final class ReportsRelationManager extends RelationManager
                     ->label('إضافة تقرير طبي جديد')
                     ->icon(Heroicon::OutlinedPlus)
                     ->button()
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->url(fn (RelationManager $livewire): string => ReportResource::getUrl('create', [
                         'visit_id' => $livewire->getOwnerRecord()->getKey(),
                     ])),
@@ -136,11 +137,13 @@ final class ReportsRelationManager extends RelationManager
             ->recordActions([
                 EditAction::make()
                     ->label('تعديل التقرير')
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->url(fn (Report $record, RelationManager $livewire): string => ReportResource::getUrl('edit', [
                         'record' => $record,
                         'visit_id' => $livewire->getOwnerRecord()->getKey(),
                     ])),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly()),
             ]);
     }
 }

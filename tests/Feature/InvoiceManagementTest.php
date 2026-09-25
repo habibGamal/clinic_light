@@ -6,11 +6,13 @@ use App\Enums\DiscountType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\VisitServiceStatus;
+use App\Enums\VisitStatus;
 use App\Filament\Resources\PatientVisits\Pages\EditPatientVisit;
 use App\Filament\Resources\PatientVisits\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\PatientVisits\RelationManagers\VisitServicesRelationManager;
 use App\Models\Patient;
 use App\Models\PatientVisit;
+use App\Models\Payment;
 use App\Models\Service;
 use App\Models\ServiceOption;
 use App\Models\ServiceOptionGroup;
@@ -241,4 +243,157 @@ it('allows recording a refund operation in payments section for cancelled visit 
     $refundPayment = $invoice->payments->firstWhere('type', 'refund');
     expect($refundPayment)->not->toBeNull()
         ->and((float) $refundPayment->amount)->toBe(-500.0);
+});
+
+it('automatically refunds all payments and cancels services when a patient visit is cancelled', function (): void {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create([
+        'patient_id' => $patient->id,
+        'status' => VisitStatus::Waiting,
+    ]);
+    $service = Service::factory()->create(['base_price' => 450.00]);
+
+    $vs = VisitService::create([
+        'visit_id' => $visit->id,
+        'service_id' => $service->id,
+        'quantity' => 1,
+        'unit_price' => 450.00,
+        'discount_type' => DiscountType::Fixed,
+        'discount_value' => 0,
+        'subtotal' => 450.00,
+        'total' => 450.00,
+        'status' => VisitServiceStatus::Pending,
+    ]);
+
+    $invoice = app(InvoiceService::class)->syncInvoice($visit);
+
+    // Initial payment of 450 EGP
+    Payment::create([
+        'visit_id' => $visit->id,
+        'invoice_id' => $invoice->id,
+        'type' => 'payment',
+        'amount' => 450.00,
+        'payment_method' => PaymentMethod::Cash,
+        'notes' => 'سداد مبدئي',
+    ]);
+
+    $invoice = app(InvoiceService::class)->syncInvoice($visit);
+    expect((float) $invoice->fresh()->paid_amount)->toBe(450.0);
+
+    // Cancel the visit
+    $visit->update(['status' => VisitStatus::Cancelled]);
+
+    $refreshedVisit = $visit->fresh(['payments', 'visitServices', 'invoice']);
+    expect($refreshedVisit->status)->toBe(VisitStatus::Cancelled)
+        ->and($refreshedVisit->visitServices->first()->status)->toBe(VisitServiceStatus::Cancelled);
+
+    $payments = $refreshedVisit->payments;
+    expect($payments)->toHaveCount(2);
+
+    $refundPayment = $payments->firstWhere('type', 'refund');
+    expect($refundPayment)->not->toBeNull()
+        ->and((float) $refundPayment->amount)->toBe(-450.0)
+        ->and($refundPayment->payment_method)->toBe(PaymentMethod::Cash)
+        ->and($refundPayment->notes)->toBe('استرداد تلقائي عند إلغاء الزيارة');
+
+    $invoice = $refreshedVisit->invoice;
+    expect((float) $invoice->paid_amount)->toBe(0.0)
+        ->and((float) $invoice->total_amount)->toBe(0.0)
+        ->and((float) $invoice->remaining_amount)->toBe(0.0)
+        ->and($invoice->status)->toBe(InvoiceStatus::Cancelled);
+});
+
+it('refunds multiple payment methods separately when a patient visit is cancelled', function (): void {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create([
+        'patient_id' => $patient->id,
+        'status' => VisitStatus::Waiting,
+    ]);
+
+    $invoice = app(InvoiceService::class)->getOrCreateInvoice($visit);
+
+    // Payment 1: 300 EGP Cash
+    Payment::create([
+        'visit_id' => $visit->id,
+        'invoice_id' => $invoice->id,
+        'type' => 'payment',
+        'amount' => 300.00,
+        'payment_method' => PaymentMethod::Cash,
+    ]);
+
+    // Payment 2: 200 EGP Card
+    Payment::create([
+        'visit_id' => $visit->id,
+        'invoice_id' => $invoice->id,
+        'type' => 'payment',
+        'amount' => 200.00,
+        'payment_method' => PaymentMethod::Card,
+    ]);
+
+    // Cancel visit
+    $visit->update(['status' => VisitStatus::Cancelled]);
+
+    $payments = $visit->fresh()->payments;
+    expect($payments)->toHaveCount(4);
+
+    $cashRefund = $payments->where('type', 'refund')->firstWhere('payment_method', PaymentMethod::Cash);
+    $cardRefund = $payments->where('type', 'refund')->firstWhere('payment_method', PaymentMethod::Card);
+
+    expect($cashRefund)->not->toBeNull()
+        ->and((float) $cashRefund->amount)->toBe(-300.0)
+        ->and($cardRefund)->not->toBeNull()
+        ->and((float) $cardRefund->amount)->toBe(-200.0);
+});
+
+it('does not create refund records when cancelling a visit with zero payments', function (): void {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create([
+        'patient_id' => $patient->id,
+        'status' => VisitStatus::Waiting,
+    ]);
+
+    $visit->update(['status' => VisitStatus::Cancelled]);
+
+    expect($visit->fresh()->payments)->toHaveCount(0);
+});
+
+it('only refunds the remaining net paid balance if partial refund was already recorded', function (): void {
+    $patient = Patient::factory()->create();
+    $visit = PatientVisit::factory()->create([
+        'patient_id' => $patient->id,
+        'status' => VisitStatus::Waiting,
+    ]);
+
+    $invoice = app(InvoiceService::class)->getOrCreateInvoice($visit);
+
+    // Initial payment: 500 EGP
+    Payment::create([
+        'visit_id' => $visit->id,
+        'invoice_id' => $invoice->id,
+        'type' => 'payment',
+        'amount' => 500.00,
+        'payment_method' => PaymentMethod::Cash,
+    ]);
+
+    // Manual partial refund before visit cancellation: 200 EGP
+    Payment::create([
+        'visit_id' => $visit->id,
+        'invoice_id' => $invoice->id,
+        'type' => 'refund',
+        'amount' => -200.00,
+        'payment_method' => PaymentMethod::Cash,
+    ]);
+
+    // Cancel visit
+    $visit->update(['status' => VisitStatus::Cancelled]);
+
+    $payments = $visit->fresh()->payments;
+    expect($payments)->toHaveCount(3);
+
+    $autoRefund = $payments->where('type', 'refund')->where('notes', 'استرداد تلقائي عند إلغاء الزيارة')->first();
+    expect($autoRefund)->not->toBeNull()
+        ->and((float) $autoRefund->amount)->toBe(-300.0);
+
+    // Net sum of payments is now 0.0
+    expect((float) $payments->sum('amount'))->toBe(0.0);
 });

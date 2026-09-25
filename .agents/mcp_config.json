@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "args": [
+                "e:/clinic_light/artisan",
+                "boost:mcp"
+            ],
+            "command": "php",
+            "disabled": false
+        }
+    }
+}

@@ -83,6 +83,7 @@ final class AttachmentsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('رفع ملف جديد')
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['uploaded_by'] = auth()->id();
                         $data['created_at'] = now();
@@ -91,7 +92,8 @@ final class AttachmentsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly()),
             ]);
     }
 }

@@ -20,6 +20,10 @@ final class VisitServiceSelectedOption extends Model
         'additional_price',
     ];
 
+    protected $appends = [
+        'name',
+    ];
+
     /**
      * @return BelongsTo<VisitService, $this>
      */
@@ -36,13 +40,18 @@ final class VisitServiceSelectedOption extends Model
         return $this->belongsTo(ServiceOption::class);
     }
 
+    public function getNameAttribute(): ?string
+    {
+        return $this->serviceOption?->name;
+    }
+
     /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'additional_price' => 'decimal:2',
+            'additional_price' => 'float',
         ];
     }
 }

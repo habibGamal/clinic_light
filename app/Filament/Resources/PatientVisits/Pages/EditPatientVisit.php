@@ -58,10 +58,16 @@ final class EditPatientVisit extends EditRecord
                 ->color('danger')
                 ->visible(fn (PatientVisit $record): bool => $record->status === VisitStatus::Waiting)
                 ->requiresConfirmation()
+                ->modalHeading('تأكيد إلغاء الزيارة')
+                ->modalDescription(fn (PatientVisit $record): string => $record->payments()->where('amount', '>', 0)->exists()
+                    ? 'هل أنت متأكد من إلغاء هذه الزيارة؟ سيتم استرداد كافة المدفوعات المسجلة تلقائياً.'
+                    : 'هل أنت متأكد من إلغاء هذه الزيارة؟'
+                )
                 ->action(function (PatientVisit $record): void {
+                    $hasPayments = $record->payments()->where('amount', '>', 0)->exists();
                     $record->update(['status' => VisitStatus::Cancelled]);
                     Notification::make()
-                        ->title('تم إلغاء الزيارة بنجاح')
+                        ->title($hasPayments ? 'تم إلغاء الزيارة واسترداد المدفوعات بنجاح' : 'تم إلغاء الزيارة بنجاح')
                         ->warning()
                         ->send();
 

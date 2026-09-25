@@ -4,88 +4,92 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Reports;
 
-use App\Models\PatientVisit;
-use App\Models\ReferringDoctor;
+use App\Enums\ShiftStatus;
+use App\Filament\Filters\ShiftFilter;
+use App\Filament\Pages\Reports\Widgets\DoctorReferralsChartWidget;
+use App\Filament\Pages\Reports\Widgets\DoctorReferralsStatsOverviewWidget;
+use App\Filament\Pages\Reports\Widgets\DoctorReferralsTableWidget;
+use App\Models\Shift;
 use BackedEnum;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Pages\Page;
+use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
 use UnitEnum;
 
-final class DoctorReferralsReport extends Page implements HasForms, HasTable
+final class DoctorReferralsReport extends BaseDashboard
 {
-    use InteractsWithForms;
-    use InteractsWithTable;
+    use HasFiltersForm;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserPlus;
-
-    protected static ?string $navigationLabel = 'تقرير الأطباء المحيلين والعمولات';
+    protected static string $routePath = 'reports/doctor-referrals';
 
     protected static ?string $title = 'تقرير إحالات الأطباء والعمولات';
 
-    protected static string|UnitEnum|null $navigationGroup = 'التقارير والإحصائيات';
+    protected static ?string $navigationLabel = 'تقرير إحالات الأطباء';
+
+    protected static string|UnitEnum|null $navigationGroup = 'التقارير';
 
     protected static ?int $navigationSort = 2;
 
-    protected string $view = 'filament.pages.reports.doctor-referrals-report';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    public function table(Table $table): Table
+    public function persistsFiltersInSession(): bool
     {
-        return $table
-            ->query(
-                ReferringDoctor::query()
-                    ->withCount('patientVisits')
-            )
-            ->columns([
-                TextColumn::make('name')
-                    ->label('اسم الطبيب')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
+        return false;
+    }
 
-                TextColumn::make('specialization')
-                    ->label('التخصص')
-                    ->searchable()
-                    ->placeholder('غير محدد'),
+    public function mount(): void
+    {
+        if (blank($this->filters)) {
+            $activeShift = Shift::query()
+                ->where('status', ShiftStatus::Open)
+                ->when(auth()->check(), fn ($q) => $q->orderByRaw('user_id = ? desc', [auth()->id()]))
+                ->latest('opened_at')
+                ->first();
 
-                TextColumn::make('phone')
-                    ->label('الهاتف')
-                    ->searchable()
-                    ->copyable(),
+            if ($activeShift) {
+                $this->filters = [
+                    'mode' => 'shifts',
+                    'shift_ids' => [$activeShift->id],
+                ];
+            } else {
+                $this->filters = [
+                    'mode' => 'period',
+                    'preset' => 'today',
+                ];
+            }
+        }
 
-                TextColumn::make('patient_visits_count')
-                    ->label('عدد الزيارات المحولة')
-                    ->sortable()
-                    ->badge()
-                    ->color('primary'),
+        if (method_exists($this, 'getFiltersForm')) {
+            $this->getFiltersForm()->fill($this->filters);
+        }
+    }
 
-                TextColumn::make('invoiced_total')
-                    ->label('إجمالي قيمة الفحوصات (ج.م)')
-                    ->state(function (ReferringDoctor $record): string {
-                        $visitIds = PatientVisit::query()->where('referring_doctor_id', $record->id)->pluck('id');
-                        $total = (float) \App\Models\Invoice::query()->whereIn('visit_id', $visitIds)->sum('total_amount');
+    public function filtersForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                ShiftFilter::makeSection('تصفية الورديات')->columnSpanFull(),
+            ]);
+    }
 
-                        return number_format($total, 2);
-                    }),
+    /**
+     * @return int | array<string, ?int>
+     */
+    public function getColumns(): int|array
+    {
+        return 2;
+    }
 
-                TextColumn::make('paid_total')
-                    ->label('المبالغ المحصلة (ج.م)')
-                    ->state(function (ReferringDoctor $record): string {
-                        $visitIds = PatientVisit::query()->where('referring_doctor_id', $record->id)->pluck('id');
-                        $paid = (float) \App\Models\Payment::query()->whereIn('visit_id', $visitIds)->sum('amount');
-
-                        return number_format($paid, 2);
-                    })
-                    ->color('success'),
-            ])
-            ->defaultSort('patient_visits_count', 'desc')
-            ->emptyStateHeading('لا يوجد أطباء محيلين مسجلين')
-            ->emptyStateDescription('عند إضافة أطباء محيلين وربطهم بزيارات المرضى، سيتم تجميع كافة الإحصائيات هنا تلقائياً.')
-            ->emptyStateIcon(Heroicon::UserPlus);
+    /**
+     * @return array<class-string>
+     */
+    public function getWidgets(): array
+    {
+        return [
+            DoctorReferralsStatsOverviewWidget::class,
+            DoctorReferralsChartWidget::class,
+            DoctorReferralsTableWidget::class,
+        ];
     }
 }

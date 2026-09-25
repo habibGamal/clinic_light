@@ -123,10 +123,18 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($visit->payments as $payment)
-                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                        @php
+                            $isRefund = $payment->type === 'refund' || (float)$payment->amount < 0;
+                        @endphp
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 @if($isRefund) bg-rose-50/40 dark:bg-rose-950/20 @endif">
                             <td class="p-3">{{ ($payment->created_at ?? $payment->paid_at)?->format('Y-m-d H:i') }}</td>
-                            <td class="p-3 font-medium">{{ method_exists($payment->payment_method, 'getLabel') ? $payment->payment_method->getLabel() : ($payment->payment_method?->value ?? (string) $payment->payment_method) }}</td>
-                            <td class="p-3 text-left font-semibold text-emerald-600 dark:text-emerald-400">{{ number_format((float)$payment->amount, 2) }} EGP</td>
+                            <td class="p-3 font-medium">
+                                {{ method_exists($payment->payment_method, 'getLabel') ? $payment->payment_method->getLabel() : ($payment->payment_method?->value ?? (string) $payment->payment_method) }}
+                                @if($isRefund)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 mr-1.5">استرداد</span>
+                                @endif
+                            </td>
+                            <td class="p-3 text-left font-semibold @if($isRefund) text-rose-600 dark:text-rose-400 @else text-emerald-600 dark:text-emerald-400 @endif">{{ number_format((float)$payment->amount, 2) }} EGP</td>
                             <td class="p-3 text-gray-500 dark:text-gray-400">{{ $payment->notes ?? '-' }}</td>
                         </tr>
                     @empty

@@ -10,6 +10,7 @@ use App\Filament\Resources\Patients\Pages\EditPatient;
 use App\Filament\Resources\Patients\Pages\ListPatients;
 use App\Models\Patient;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -58,11 +59,9 @@ final class PatientResource extends Resource
                             ->tel()
                             ->unique(ignoreRecord: true)
                             ->maxLength(20),
-                        TextInput::make('age')
-                            ->label('العمر')
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(150),
+                        DatePicker::make('birth_date')
+                            ->label('تاريخ الميلاد')
+                            ->maxDate(now()),
                         Select::make('gender')
                             ->label('الجنس')
                             ->options(Gender::class),
@@ -88,8 +87,9 @@ final class PatientResource extends Resource
                 TextColumn::make('phone')
                     ->label('الهاتف')
                     ->searchable(),
-                TextColumn::make('age')
-                    ->label('العمر')
+                TextColumn::make('birth_date')
+                    ->label('تاريخ الميلاد')
+                    ->date()
                     ->sortable(),
                 TextColumn::make('gender')
                     ->label('الجنس')

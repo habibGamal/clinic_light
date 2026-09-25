@@ -34,7 +34,7 @@ it('can create a patient', function () {
         ->fillForm([
             'full_name' => $patientData->full_name,
             'phone' => $patientData->phone,
-            'age' => $patientData->age,
+            'birth_date' => $patientData->birth_date?->format('Y-m-d'),
             'gender' => $patientData->gender,
         ])
         ->call('create')

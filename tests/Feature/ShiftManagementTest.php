@@ -65,3 +65,22 @@ test('user can close an active shift via shift toggle component', function (): v
     expect((float) $shift->difference)->toBe(0.00);
     expect($shift->closed_at)->not->toBeNull();
 });
+
+test('patient visit requires a non-null shift_id', function (): void {
+    expect(function (): void {
+        App\Models\PatientVisit::factory()->create([
+            'shift_id' => null,
+        ]);
+    })->toThrow(Illuminate\Database\QueryException::class);
+});
+
+test('shift deletion is prevented when it has associated patient visits', function (): void {
+    $shift = Shift::factory()->create();
+    App\Models\PatientVisit::factory()->create([
+        'shift_id' => $shift->id,
+    ]);
+
+    expect(function () use ($shift): void {
+        $shift->delete();
+    })->toThrow(Illuminate\Database\QueryException::class);
+});

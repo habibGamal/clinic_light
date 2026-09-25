@@ -7,7 +7,6 @@ namespace App\Filament\Resources\PatientVisits\RelationManagers;
 use App\Enums\DiscountType;
 use App\Enums\SelectionType;
 use App\Enums\VisitServiceStatus;
-use App\Filament\Resources\PatientVisits\Pages\EditPatientVisit;
 use App\Models\Service;
 use App\Models\ServiceOption;
 use App\Models\ServiceOptionGroup;
@@ -38,7 +37,7 @@ use Filament\Tables\Table;
 
 final class VisitServicesRelationManager extends RelationManager
 {
-    public ?string $pageClass = EditPatientVisit::class;
+    public ?string $pageClass = null;
 
     protected static string $relationship = 'visitServices';
 
@@ -328,6 +327,7 @@ final class VisitServicesRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('إضافة خدمة جديدة')
+                    ->hidden(fn (RelationManager $livewire): bool => $livewire->isReadOnly())
                     ->modalHeading('اختيار وإضافة خدمات جديدة')
                     ->modalWidth('full')
                     ->form(fn (): array => [
@@ -695,7 +695,7 @@ final class VisitServicesRelationManager extends RelationManager
                     ->label('إكمال')
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->color('success')
-                    ->visible(fn (VisitService $record): bool => $record->status === VisitServiceStatus::Pending)
+                    ->visible(fn (RelationManager $livewire, VisitService $record): bool => ! $livewire->isReadOnly() && $record->status === VisitServiceStatus::Pending)
                     ->requiresConfirmation()
                     ->modalHeading('تأكيد إكمال الخدمة')
                     ->modalDescription('هل أنت تأكد من تغيير حالة الخدمة إلى مكتمل؟')
@@ -712,7 +712,7 @@ final class VisitServicesRelationManager extends RelationManager
                     ->label('استرجاع وإلغاء الخدمة')
                     ->icon(Heroicon::OutlinedArrowPath)
                     ->color('warning')
-                    ->visible(fn (VisitService $record): bool => $record->status === VisitServiceStatus::Completed)
+                    ->visible(fn (RelationManager $livewire, VisitService $record): bool => ! $livewire->isReadOnly() && $record->status === VisitServiceStatus::Completed)
                     ->requiresConfirmation()
                     ->modalHeading('تأكيد استرجاع وإلغاء الخدمة')
                     ->modalDescription('هل أنت متاكد من استرجاع وإلغاء هذه الخدمة المكتملة؟ سيتم إضافة مفردات الاسترجاع للفاتورة وإلغاء الخدمة.')
@@ -725,8 +725,8 @@ final class VisitServicesRelationManager extends RelationManager
                     }),
 
                 EditAction::make()
-                    ->hidden(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
-                    ->disabled(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->hidden(fn (RelationManager $livewire, VisitService $record): bool => $livewire->isReadOnly() || in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->disabled(fn (RelationManager $livewire, VisitService $record): bool => $livewire->isReadOnly() || in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
                     ->mutateRecordDataUsing(function (array $data, VisitService $record): array {
                         $groups = ServiceOptionGroup::query()->where('service_id', $record->service_id)->get();
                         $selectedOptionIds = $record->selectedOptions->pluck('service_option_id')->toArray();
@@ -762,8 +762,8 @@ final class VisitServicesRelationManager extends RelationManager
                     }),
 
                 DeleteAction::make()
-                    ->hidden(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
-                    ->disabled(fn (VisitService $record): bool => in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->hidden(fn (RelationManager $livewire, VisitService $record): bool => $livewire->isReadOnly() || in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
+                    ->disabled(fn (RelationManager $livewire, VisitService $record): bool => $livewire->isReadOnly() || in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true))
                     ->before(function (VisitService $record, DeleteAction $action): void {
                         if (in_array($record->status, [VisitServiceStatus::Completed, VisitServiceStatus::Cancelled], true)) {
                             Notification::make()

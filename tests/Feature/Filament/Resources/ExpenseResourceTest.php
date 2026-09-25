@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\ShiftStatus;
-use App\Filament\Resources\Expenses\Pages\CreateExpense;
+use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
@@ -11,8 +11,6 @@ use App\Models\Shift;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Laravel\assertDatabaseHas;
-use function Pest\Laravel\assertDatabaseMissing;
 use function Pest\Livewire\livewire;
 
 beforeEach(function () {
@@ -20,77 +18,25 @@ beforeEach(function () {
     actingAs($this->user);
 });
 
-it('can render expense list page', function () {
+it('can render expense list page in filament for viewing only', function () {
     livewire(ListExpenses::class)
         ->assertOk();
 });
 
-it('can render expense create page', function () {
-    livewire(CreateExpense::class)
-        ->assertOk();
-});
-
-it('can create an expense with category and sets created_by to logged in user', function () {
-    Shift::factory()->create([
-        'user_id' => $this->user->id,
-        'status' => ShiftStatus::Open,
-    ]);
-    $category = ExpenseCategory::factory()->create();
-
-    livewire(CreateExpense::class)
-        ->fillForm([
-            'expense_category_id' => $category->id,
-            'amount' => 1500.00,
-            'notes' => 'ملاحظة مصروف',
-        ])
-        ->call('create')
-        ->assertNotified();
-
-    assertDatabaseHas(Expense::class, [
-        'expense_category_id' => $category->id,
-        'amount' => 1500.00,
-        'created_by' => $this->user->id,
-        'notes' => 'ملاحظة مصروف',
-    ]);
-});
-
-it('assigns open shift to expense if shift is currently open', function () {
+it('disallows all CRUD operations in filament for expenses', function () {
     $shift = Shift::factory()->create([
         'user_id' => $this->user->id,
         'status' => ShiftStatus::Open,
     ]);
-    $category = ExpenseCategory::factory()->create();
-
-    livewire(CreateExpense::class)
-        ->fillForm([
-            'expense_category_id' => $category->id,
-            'amount' => 500.00,
-        ])
-        ->call('create')
-        ->assertNotified();
-
-    assertDatabaseHas(Expense::class, [
-        'expense_category_id' => $category->id,
+    $expense = Expense::factory()->create([
         'shift_id' => $shift->id,
-        'amount' => 500.00,
+        'amount' => 100.00,
     ]);
-});
 
-it('prevents expense creation when no shift is open', function () {
-    $category = ExpenseCategory::factory()->create();
-
-    livewire(CreateExpense::class)
-        ->fillForm([
-            'expense_category_id' => $category->id,
-            'amount' => 300.00,
-        ])
-        ->call('create')
-        ->assertNotified();
-
-    assertDatabaseMissing(Expense::class, [
-        'expense_category_id' => $category->id,
-        'amount' => 300.00,
-    ]);
+    expect(ExpenseResource::canCreate())->toBeFalse()
+        ->and(ExpenseResource::canEdit($expense))->toBeFalse()
+        ->and(ExpenseResource::canDelete($expense))->toBeFalse()
+        ->and(ExpenseResource::canDeleteAny())->toBeFalse();
 });
 
 it('has many expenses relationship on expense category', function () {
@@ -100,4 +46,37 @@ it('has many expenses relationship on expense category', function () {
 
     expect($category->expenses)->toHaveCount(2)
         ->and($category->expenses->pluck('id')->toArray())->toContain($expense1->id, $expense2->id);
+});
+
+it('allows editing an expense only within the same active open shift', function () {
+    $shift = Shift::factory()->create([
+        'user_id' => $this->user->id,
+        'status' => ShiftStatus::Open,
+    ]);
+    $expense = Expense::factory()->create([
+        'shift_id' => $shift->id,
+        'amount' => 100.00,
+    ]);
+
+    expect($expense->isEditable($shift))->toBeTrue();
+
+    // Should succeed within the same shift
+    $expense->update(['amount' => 200.00]);
+    expect($expense->fresh()->amount)->toBe('200.00');
+});
+
+it('throws domain exception when attempting to update or delete closed shift expense via model', function () {
+    $shift = Shift::factory()->closed()->create();
+    $expense = Expense::factory()->create([
+        'shift_id' => $shift->id,
+        'amount' => 100.00,
+    ]);
+
+    expect($expense->isEditable(null))->toBeFalse();
+
+    expect(fn () => $expense->update(['amount' => 999.00]))
+        ->toThrow(DomainException::class);
+
+    expect(fn () => $expense->delete())
+        ->toThrow(DomainException::class);
 });

@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -23,6 +24,7 @@ final class ExpenseFactory extends Factory
     {
         return [
             'expense_category_id' => ExpenseCategory::factory(),
+            'shift_id' => Shift::factory(),
             'amount' => fake()->randomFloat(2, 100, 10000),
             'created_by' => User::factory(),
             'notes' => fake()->optional()->sentence(),

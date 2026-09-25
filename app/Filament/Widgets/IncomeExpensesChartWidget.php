@@ -45,7 +45,7 @@ final class IncomeExpensesChartWidget extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'الإيرادات (المقبوضات) ج.م',
+                    'label' => 'الإيرادات (المدفوعات) ج.م',
                     'data' => $incomeData,
                     'backgroundColor' => '#10b981',
                     'borderRadius' => 4,

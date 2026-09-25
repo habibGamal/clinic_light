@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Expenses\Pages;
 
 use App\Filament\Resources\Expenses\ExpenseResource;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 final class EditExpense extends EditRecord
@@ -14,6 +15,22 @@ final class EditExpense extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [
+            DeleteAction::make()
+                ->visible(fn (): bool => $this->getRecord()->isEditable()),
+        ];
+    }
+
+    protected function beforeSave(): void
+    {
+        if (! $this->getRecord()->isEditable()) {
+            Notification::make()
+                ->title('تم إغلاق الوردية')
+                ->body('لا يمكن تعديل المصروف بعد إغلاق الوردية.')
+                ->danger()
+                ->send();
+
+            $this->halt();
+        }
     }
 }

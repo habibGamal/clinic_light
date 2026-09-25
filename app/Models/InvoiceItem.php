@@ -54,9 +54,9 @@ final class InvoiceItem extends Model
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
-            'discount_amount' => 'decimal:2',
-            'total' => 'decimal:2',
+            'unit_price' => 'float',
+            'discount_amount' => 'float',
+            'total' => 'float',
             'quantity' => 'integer',
         ];
     }

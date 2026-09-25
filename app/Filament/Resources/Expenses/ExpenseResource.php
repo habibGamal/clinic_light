@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Expenses;
 
-use App\Filament\Resources\Expenses\Pages\CreateExpense;
-use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Models\Expense;
 use BackedEnum;
@@ -20,6 +18,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 final class ExpenseResource extends Resource
@@ -35,6 +34,26 @@ final class ExpenseResource extends Resource
     protected static ?string $pluralModelLabel = 'المصروفات';
 
     protected static string|UnitEnum|null $navigationGroup = 'العمليات';
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -88,6 +107,10 @@ final class ExpenseResource extends Resource
                     ->label('الوردية')
                     ->placeholder('بدون وردية')
                     ->sortable(),
+                TextColumn::make('shift.status')
+                    ->label('حالة الوردية')
+                    ->badge()
+                    ->sortable(),
                 TextColumn::make('creator.name')
                     ->label('بواسطة')
                     ->sortable(),
@@ -97,22 +120,14 @@ final class ExpenseResource extends Resource
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
-            ->recordActions([
-                \Filament\Actions\EditAction::make(),
-            ])
-            ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListExpenses::route('/'),
-            'create' => CreateExpense::route('/create'),
-            'edit' => EditExpense::route('/{record}/edit'),
         ];
     }
 }

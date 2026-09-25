@@ -10,7 +10,9 @@ use App\Enums\VisitServiceStatus;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\PatientVisit;
+use App\Models\Payment;
 use App\Models\VisitService;
+use Illuminate\Support\Facades\DB;
 
 final class InvoiceService
 {
@@ -42,7 +44,7 @@ final class InvoiceService
         // Delete existing items to rebuild clean mapping
         $invoice->items()->delete();
 
-        $visit->loadMissing(['visitServices.service', 'visitServices.selectedOptions.serviceOption', 'payments']);
+        $visit->load(['visitServices.service', 'visitServices.selectedOptions.serviceOption', 'payments']);
 
         foreach ($visit->visitServices as $vs) {
             // For pending or completed services, add active charges
@@ -64,6 +66,44 @@ final class InvoiceService
     {
         $vs->update(['status' => VisitServiceStatus::Cancelled]);
         $this->syncInvoice($vs->visit);
+    }
+
+    public function refundVisitPayments(PatientVisit $visit): void
+    {
+        DB::transaction(function () use ($visit): void {
+            // Cancel all services for this visit that are not already cancelled
+            $visit->visitServices()
+                ->where('status', '!=', VisitServiceStatus::Cancelled)
+                ->update(['status' => VisitServiceStatus::Cancelled]);
+
+            $invoice = $this->getOrCreateInvoice($visit);
+
+            // Group payments by payment method to find net positive amounts
+            $paymentSummaries = $visit->payments()
+                ->selectRaw('payment_method, SUM(amount) as net_amount')
+                ->groupBy('payment_method')
+                ->havingRaw('SUM(amount) > 0')
+                ->get();
+
+            foreach ($paymentSummaries as $summary) {
+                $netAmount = (float) $summary->net_amount;
+                if ($netAmount <= 0) {
+                    continue;
+                }
+
+                Payment::query()->create([
+                    'visit_id' => $visit->id,
+                    'invoice_id' => $invoice->id,
+                    'type' => 'refund',
+                    'amount' => -abs($netAmount),
+                    'payment_method' => $summary->payment_method,
+                    'notes' => 'استرداد تلقائي عند إلغاء الزيارة',
+                ]);
+            }
+
+            $visit->unsetRelation('visitServices')->unsetRelation('payments');
+            $this->syncInvoice($visit);
+        });
     }
 
     private function createItemsForVisitService(Invoice $invoice, VisitService $vs): void
