@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Providers;
 
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
@@ -12,15 +10,22 @@ use Filament\Support\Concerns\Configurable;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
-final class AppServiceProvider extends ServiceProvider
+class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     */
     public function register(): void
     {
         //
     }
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
         $this->configureTable();
@@ -47,5 +52,6 @@ final class AppServiceProvider extends ServiceProvider
             $table->striped()
                 ->deferLoading();
         });
+        Vite::prefetch(concurrency: 3);
     }
 }
